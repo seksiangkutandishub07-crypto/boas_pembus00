@@ -2106,10 +2106,20 @@ function setStatus(msg, ok=true) {
   if (dot) dot.style.background = ok ? 'var(--accent4)' : 'var(--accent3)';
 }
 
+/* loadData = dipanggil dari tombol Refresh (manual) */
 async function loadData() {
   const btn = document.getElementById('refreshBtn');
   if (btn) { btn.classList.add('loading'); btn.textContent = 'Memuat...'; }
+  setStatus('Menghubungkan ke Sheets…', true);
+  await loadDataBackground();
+  if (btn) {
+    btn.classList.remove('loading');
+    btn.innerHTML = `<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Refresh`;
+  }
+}
 
+/* loadDataBackground = fetch + render tanpa sentuh loading overlay */
+async function loadDataBackground() {
   setStatus('Menghubungkan ke Sheets…', true);
 
   try {
@@ -2145,16 +2155,12 @@ async function loadData() {
     console.warn('Sheets fetch error:', err);
   }
 
-  renderAll();
+  try { renderAll(); } catch(e) { console.error('renderAll:', e); }
 
   const now = new Date();
   const lu = document.getElementById('lastUpdate');
   if (lu) lu.textContent = 'Update: ' + now.toLocaleTimeString('id-ID');
 
-  if (btn) {
-    btn.classList.remove('loading');
-    btn.innerHTML = `<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Refresh`;
-  }
   hideLoader();
 }
 
@@ -2922,7 +2928,7 @@ function renderSolarGabung() {
 /* ════════════════════════════════════════════════
    AUTO REFRESH EVERY 5 MIN
 ═══════════════════════════════════════════════ */
-setInterval(loadData, 5 * 60 * 1000);
+setInterval(loadDataBackground, 5 * 60 * 1000);
 
 /* ════════════════════════════════════════════════
    INIT
@@ -3002,7 +3008,17 @@ setInterval(loadData, 5 * 60 * 1000);
 })();
 
 window.addEventListener('DOMContentLoaded', () => {
-  loadData();
+  // Sembunyikan loading overlay LANGSUNG — jangan tunggu fetch
+  // Dashboard tetap render dengan embedded data dulu
+  G.spjData   = EMBEDDED_DATA;
+  G.driverMap = DRIVER_MAP;
+  try { renderAll(); } catch(e) { console.error('renderAll error:', e); }
+  hideLoader();
+
+  // Baru kemudian fetch real-time di background
+  setTimeout(() => {
+    loadDataBackground();
+  }, 300);
 });
 </script>
 </body>
