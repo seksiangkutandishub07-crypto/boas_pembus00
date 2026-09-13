@@ -1869,7 +1869,7 @@
    sumber Google Sheets, mapping kolom, menu, refresh, about)
    hidup di SATU objek ini dan disimpan ke localStorage.
 ═══════════════════════════════════════════════ */
-const DEFAULT_SHEET_ID = '1dxajA2HLkiJKWVixcIbQI50B1CVUa4DHktJModqxb6w';
+const DEFAULT_SHEET_ID = '1N6TJHlImm2yaeEkYZnH6sNhQZsamz8hn9puVU922lKQ';
 const LS_KEY = 'boasPembusConfigV3';
 const LS_KEY_LEGACY = ['boasPembusConfigV2', 'boasPembusConfigV1']; // untuk migrasi otomatis dari versi lama
 
@@ -1900,7 +1900,7 @@ function defaultConfig() {
     sheets: {
       activeSpreadsheet: 'src-default',
       sources: [
-        { id:'src-default', name:'Data Pemeliharaan / SPJ (Bawaan)', url:`https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`, spreadsheetId: DEFAULT_SHEET_ID, sheetTab:'REKAP SPJ', jenis:'Data Pemeliharaan', status:'aktif', lastStatus:'unknown' }
+        { id:'src-default', name:'Data Pemeliharaan / SPJ (Bawaan)', url:`https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`, spreadsheetId: DEFAULT_SHEET_ID, sheetTab:'Sheet1', jenis:'Data Pemeliharaan', status:'aktif', lastStatus:'unknown' }
       ]
     },
     refresh: { interval: 300000 },
@@ -2847,17 +2847,12 @@ function parseGVizRows(rows) {
       order.push(key);
       const tglRaw = cv(2, row);
       const tgl    = parseTanggal(tglRaw ? tglRaw : cv(19, row));
-      const tglSP  = parseTanggal(cv(19, row));
       records[key] = {
         tnkb,
-        tanggal: tgl.str || tglSP.str,
-        bulan:   tgl.bulan || tglSP.bulan,
-        tgl_sp:  tglSP.str,
-        tgl_bastb: parseTanggal(cv(21, row)).str,
-        tgl_bapb:  parseTanggal(cv(23, row)).str,
-        tgl_spmk:  parseTanggal(cv(25, row)).str,
-        vendor:  String(cv(27, row)).trim() || 'DJUHARI',
-        bayar:   String(cv(28, row)).toLowerCase().includes('lunas'),
+        tanggal: tgl.str,
+        bulan:   tgl.bulan,
+        vendor:  String(cv(20, row)).trim() || 'Tidak Diketahui',
+        bayar:   String(cv(21, row)).toLowerCase().includes('lunas') && !String(cv(21, row)).toLowerCase().includes('belum'),
         items_sc: [], items_pel: [], items_jasa: [],
         sc:0, pel:0, jasa:0, total:0,
         ban_luar:0, ban_dalam:0, lidah_ban:0,
@@ -2946,6 +2941,15 @@ function getActiveSheetId() {
   } catch(e) {}
   return DEFAULT_SHEET_ID; // fallback bawaan versi 1.2
 }
+function getActiveSheetTab() {
+  try {
+    const src = (CONFIG.sheets.sources || []).find(s => s.id === CONFIG.sheets.activeSpreadsheet && s.status !== 'nonaktif');
+    if (src && src.sheetTab) return src.sheetTab;
+    const anyActive = (CONFIG.sheets.sources || []).find(s => s.status !== 'nonaktif' && s.sheetTab);
+    if (anyActive) return anyActive.sheetTab;
+  } catch(e) {}
+  return 'Sheet1';
+}
 async function fetchGViz(sheetName) {
   const SHEET_ID = getActiveSheetId();
   const encoded = encodeURIComponent(sheetName);
@@ -3026,17 +3030,14 @@ function parseCSVRows(csvRows) {
 
     if (!records[key]) {
       order.push(key);
-      const tglStr = String(row[2] || '').trim();
+      const tglStr = String(row[2] || '').trim() || String(row[19] || '').trim();
       const bulan  = BULAN_IDX.find(b => b && tglStr.toLowerCase().includes(b.toLowerCase())) || 'Januari';
-      const vendor = String(row[27] || row[26] || 'DJUHARI').trim();
-      const status = String(row[28] || row[27] || '').toLowerCase();
+      const vendor = String(row[20] || '').trim();
+      const status = String(row[21] || '').toLowerCase();
       records[key] = {
-        tnkb, tanggal: tglStr || String(row[19]||'').trim(),
-        bulan, tgl_sp: String(row[19]||'').trim(),
-        tgl_bastb: String(row[21]||'').trim(),
-        tgl_bapb:  String(row[23]||'').trim(),
-        tgl_spmk:  String(row[25]||'').trim(),
-        vendor: vendor || 'DJUHARI',
+        tnkb, tanggal: tglStr,
+        bulan,
+        vendor: vendor || 'Tidak Diketahui',
         bayar: status.includes('lunas') && !status.includes('belum'),
         items_sc: [], items_pel: [], items_jasa: [],
         sc:0, pel:0, jasa:0, total:parseRp(row[18]),
@@ -3144,7 +3145,7 @@ async function loadData() {
 
   try {
     // ── FETCH SHEET REKAP SPJ ──
-    const result = await fetchSheetData('REKAP SPJ');
+    const result = await fetchSheetData(getActiveSheetTab());
 
     {
       const { rows, source } = result;
