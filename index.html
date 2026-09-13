@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOAS.PEMBUS.V.1.2 — Dinas Perhubungan</title>
+<title>BOAS.PEMBUS V3 — Dinas Perhubungan Kabupaten Luwu Timur</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -150,6 +150,50 @@
   }
   .topbar-right {
     display: flex; align-items: center; gap: 14px;
+  }
+  .topbar-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
+    padding: 7px 12px; flex: 1; max-width: 360px; margin: 0 16px; color: var(--text3);
+  }
+  .topbar-search input { background: transparent; border: none; outline: none; color: var(--text); font-size: 12.5px; width: 100%; }
+  .topbar-search input::placeholder { color: var(--text3); }
+  .global-search-results {
+    position: absolute; left: 28px; right: 28px; top: 56px; z-index: 60;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.35); max-height: 60vh; overflow-y: auto; padding: 8px;
+  }
+  .global-search-results.hidden { display: none; }
+  .gsr-group-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); padding: 8px 10px 4px; }
+  .gsr-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+  .gsr-item:hover { background: rgba(59,130,246,0.1); }
+  .gsr-item .gsr-main { font-size: 12.5px; color: var(--text); font-weight: 600; }
+  .gsr-item .gsr-sub { font-size: 11px; color: var(--text3); }
+  .gsr-item .gsr-go { font-size: 10.5px; color: var(--accent); border: 1px solid rgba(59,130,246,.3); padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+  .gsr-empty { padding: 20px; text-align: center; color: var(--text3); font-size: 12px; }
+  .conn-banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.35);
+    color: var(--text); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 12.5px;
+  }
+  .conn-banner.hidden { display: none; }
+  .conn-banner.warn { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.35); }
+  .conn-banner b { display:block; margin-bottom:3px; font-size:13px; }
+  .conn-banner ul { margin:6px 0 0 18px; padding:0; color: var(--text2); }
+  .conn-banner code { background:rgba(255,255,255,.08); padding:1px 5px; border-radius:4px; font-family:var(--mono); }
+  .conn-banner .cb-actions { margin-top:8px; display:flex; gap:8px; }
+  .conn-banner button { font-size:11px; padding:5px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg3); color:var(--text); cursor:pointer; }
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; color:#000; background:#fff; padding: 24px; }
+    #printArea h1 { font-size: 18px; margin-bottom: 2px; }
+    #printArea h2 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
+    #printArea table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    #printArea th, #printArea td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+    #printArea .pr-kpi { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 4px; }
+    #printArea .pr-kpi div { border: 1px solid #999; border-radius: 6px; padding: 6px 10px; font-size: 11px; }
   }
   .refresh-btn {
     display: flex; align-items: center; gap: 6px;
@@ -479,6 +523,65 @@
     .main { margin-left: 180px; }
   }
 
+  /* ══════════════ MOBILE FIRST — HP / SMARTPHONE (≤720px) ══════════════ */
+  .hamburger-btn, .sidebar-overlay, .bottom-nav { display: none; }
+  @media (max-width: 720px) {
+    .hamburger-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg3); color: var(--text); flex-shrink: 0; cursor: pointer;
+    }
+    .sidebar {
+      width: 240px; max-width: 82vw;
+      transform: translateX(-100%);
+      transition: transform .25s ease;
+      z-index: 200;
+    }
+    body.sidebar-open .sidebar { transform: translateX(0); }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 190;
+    }
+    body.sidebar-open .sidebar-overlay { display: block; }
+    .main { margin-left: 0; }
+    .topbar { padding: 0 12px; gap: 8px; }
+    .topbar-title { font-size: 13px; flex-shrink: 0; }
+    .topbar-search { display: none; }
+    .topbar-right { gap: 8px; }
+    .topbar-right .last-update { display: none; }
+    .refresh-btn span, .logout-btn span { display: none; }
+    .page { padding: 14px 12px 84px; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .metric-card { padding: 12px; }
+    .metric-value { font-size: 18px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 12px; }
+    .chart-container { height: 200px !important; }
+    .jadwal-grid { grid-template-columns: repeat(2, 1fr); padding: 12px; gap: 8px; }
+    .data-table, table { font-size: 11px; }
+    .settings-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .form-grid { grid-template-columns: 1fr !important; }
+    .modal-box { width: 94vw !important; max-height: 88vh; }
+    .global-search-results { left: 10px; right: 10px; }
+
+    /* Bottom navigation — 5 menu prioritas + tombol Menu untuk sisanya */
+    .bottom-nav {
+      display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
+      background: var(--bg2); border-top: 1px solid var(--border);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+      justify-content: space-around; align-items: center;
+    }
+    .bn-item {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      color: var(--text3); font-size: 9.5px; flex: 1; padding: 4px 2px; border-radius: 8px; cursor: pointer;
+    }
+    .bn-item.active { color: var(--accent); }
+    .bn-item svg { width: 18px; height: 18px; }
+    body.locked .bottom-nav { display: none; }
+  }
+  @media (max-width: 420px) {
+    .metrics-grid { grid-template-columns: 1fr; }
+    .jadwal-grid { grid-template-columns: 1fr; }
+  }
+
   /* ── SPJ DETAIL TABLE ── */
   .spj-nota {
     border: 1px solid var(--border);
@@ -688,6 +791,7 @@
     letter-spacing: .04em;
   }
   .ss-brand .ss-instansi { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .ss-brand .ss-tagline { font-size: 11px; font-style: italic; color: var(--accent3); margin-top: 8px; letter-spacing: .2px; }
 
   .ss-panel {
     position: relative; z-index: 2; width: min(880px, 100%);
@@ -819,6 +923,23 @@
   .status-chip.tidak-aktif, .status-chip.rusak { background:rgba(239,68,68,.12); color:var(--danger); }
   .status-chip.perawatan, .status-chip.proses, .status-chip.terjadwal { background:rgba(245,158,11,.12); color:var(--accent3); }
   .status-chip.cadangan, .status-chip.menunggu { background:rgba(100,116,139,.15); color:var(--text2); }
+  .status-chip.normal { background:rgba(16,185,129,.12); color:var(--accent4); }
+  .status-chip.mendekati { background:rgba(245,158,11,.12); color:var(--accent3); }
+  .status-chip.jatuh-tempo { background:rgba(239,68,68,.12); color:var(--danger); }
+  .status-chip.tidak-ada-data { background:rgba(100,116,139,.15); color:var(--text3); }
+  .jadwal-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px; padding:16px; }
+  .jadwal-item { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
+  .jadwal-item .ji-tnkb { font-family:var(--mono); font-weight:700; font-size:12px; color:var(--text); }
+  .jadwal-item .ji-info { font-size:10.5px; color:var(--text3); margin:4px 0 6px; }
+  .jadwal-empty { padding:20px; color:var(--text3); font-size:12px; grid-column:1/-1; }
+  .dq-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .dq-row:last-child { border-bottom:none; }
+  .dq-type { font-size:12.5px; font-weight:600; color:var(--text); white-space:nowrap; }
+  .dq-count { display:inline-block; margin-left:6px; background:rgba(148,163,184,.15); color:var(--text2); font-size:10.5px; padding:1px 7px; border-radius:10px; }
+  .dq-detail { font-size:11px; color:var(--text3); flex:1; text-align:right; }
+  .dq-row.dq-err .dq-type { color:var(--danger); }
+  .dq-row.dq-warn .dq-type { color:var(--accent3); }
+  .dq-row.dq-info .dq-type { color:var(--accent2); }
   .empty-state { text-align:center; padding: 40px 20px; color: var(--text3); }
   .empty-state svg { opacity:.3; margin-bottom:10px; }
 
@@ -895,10 +1016,11 @@
 ═══════════════════════════════════════════════════════════ -->
 <div id="startScreen">
   <div class="ss-brand">
-    <div class="ss-badge">BOAS · PEMBUS · V2</div>
+    <div class="ss-badge">BOAS · PEMBUS · V3</div>
     <h1 id="ssTitle">BUS OPERATION AND MAINTENANCE SYSTEM</h1>
     <div class="ss-sub" id="ssSub">Angkutan Jalan_DISHUB LUTIM</div>
     <div class="ss-instansi" id="ssYear">Tahun Operasional 2026</div>
+    <div class="ss-tagline" id="ssTagline">"Naik Bus Sekolah Aman, Safety First Jadi Kebiasaan"</div>
   </div>
 
   <div class="ss-panel" id="ssPanel">
@@ -977,7 +1099,7 @@
     </div>
   </div>
 
-  <div class="ss-footnote">BOAS.PEMBUS V2 — Dashboard Operasional &amp; Pemeliharaan Bus Sekolah</div>
+  <div class="ss-footnote">BOAS.PEMBUS V3 — Dashboard Operasional &amp; Pemeliharaan Bus Sekolah</div>
 </div>
 
 <!-- LOADING -->
@@ -995,7 +1117,7 @@
 <!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-badge" style="background:linear-gradient(135deg,#f59e0b,#d97706)">BOAS.PEMBUS V2</div>
+    <div class="logo-badge" style="background:linear-gradient(135deg,#f59e0b,#d97706)">BOAS.PEMBUS V3</div>
     <h1 id="sbTitle" style="font-size:11px;line-height:1.3;margin-top:6px">BUS OPERATION AND<br>MAINTENANCE SYSTEM</h1>
     <p id="sbSub">Angkutan Jalan_DISHUB LUTIM · 2026</p>
   </div>
@@ -1064,11 +1186,19 @@
     <div style="margin-top:6px;font-size:10px;" id="refreshIntervalLabel">Auto-refresh: 5 menit</div>
   </div>
 </aside>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebarMobile()"></div>
 
 <!-- MAIN -->
 <main class="main">
   <div class="topbar">
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebarMobile()" aria-label="Buka menu">
+      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
     <div class="topbar-title" id="pageTitle">Overview Dashboard</div>
+    <div class="topbar-search">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="globalSearchInput" placeholder="Cari TNKB, vendor, nota, sopir, rute..." autocomplete="off" oninput="globalSearch(this.value)">
+    </div>
     <div class="topbar-right">
       <span class="mode-badge tamu" id="modeBadge">MODE TAMU</span>
       <span class="last-update" id="lastUpdate">—</span>
@@ -1082,12 +1212,15 @@
       </button>
     </div>
   </div>
+  <div id="globalSearchResults" class="global-search-results hidden"></div>
 
   <!-- ═══ PAGE: OVERVIEW ═══ -->
   <div class="page active" id="page-overview">
+    <div id="connBanner" class="conn-banner hidden"></div>
     <div class="section-header">
       <h2>Overview</h2>
       <span class="pill">Jan – Feb 2026</span>
+      <button class="btn-secondary" style="margin-left:auto" onclick="printSimpleReport()">🖨️ Cetak Laporan Ringkas</button>
     </div>
 
     <div class="metrics-grid" id="metricsGrid">
@@ -1111,6 +1244,14 @@
         <div class="metric-value" id="m-bayar">—</div>
         <div class="metric-sub" id="m-belum-bayar">Belum: —</div>
       </div>
+    </div>
+
+    <div class="card" id="dataQualityCard" style="margin-bottom:20px">
+      <div class="card-header">
+        <div><div class="card-title">Data Quality Monitor</div><div class="card-subtitle">Pemeriksaan otomatis kelengkapan &amp; validitas data dari sumber aktif</div></div>
+        <span class="status-chip normal" id="dqBadge">Memeriksa…</span>
+      </div>
+      <div id="dqBody" style="padding:4px 20px 16px"></div>
     </div>
 
     <div class="grid-2">
@@ -1366,6 +1507,12 @@
       <span class="leg"><span class="cc cc-none">—</span> Tidak ada</span>
       <span style="margin-left:8px;color:var(--text3);font-size:10px">BL = Ban Luar &nbsp;|&nbsp; BD = Ban Dalam &nbsp;|&nbsp; LB = Lidah Ban</span>
     </div>
+    <div class="card" id="jadwalBanCard">
+      <div class="card-header">
+        <div><div class="card-title">Status Jadwal Pergantian Ban</div><div class="card-subtitle">Dihitung dari tanggal transaksi terakhir per kendaraan pada Google Sheets</div></div>
+      </div>
+      <div id="jadwalBanStatus" class="jadwal-grid"></div>
+    </div>
     <div class="card">
       <div class="card-header">
         <div>
@@ -1391,6 +1538,12 @@
       <span class="leg"><span class="cc cc-none">—</span> Belum/Tidak</span>
       <span style="margin-left:8px;color:var(--text3);font-size:10px">OM = Oli Mesin &nbsp;|&nbsp; FO = Filter Oli</span>
     </div>
+    <div class="card" id="jadwalOliCard">
+      <div class="card-header">
+        <div><div class="card-title">Status Jadwal Pergantian Oli</div><div class="card-subtitle">Dihitung dari tanggal transaksi terakhir per kendaraan pada Google Sheets</div></div>
+      </div>
+      <div id="jadwalOliStatus" class="jadwal-grid"></div>
+    </div>
     <div class="card">
       <div class="card-header">
         <div>
@@ -1415,6 +1568,12 @@
       <span class="leg"><span class="cc cc-sol-3p">3+</span> 3 kali+</span>
       <span class="leg"><span class="cc cc-none">—</span> Belum/Tidak</span>
       <span style="margin-left:8px;color:var(--text3);font-size:10px">FSA = Filter Solar Atas &nbsp;|&nbsp; FSB = Filter Solar Bawah</span>
+    </div>
+    <div class="card" id="jadwalSolarCard">
+      <div class="card-header">
+        <div><div class="card-title">Status Jadwal Filter Solar</div><div class="card-subtitle">Dihitung dari tanggal transaksi terakhir per kendaraan pada Google Sheets</div></div>
+      </div>
+      <div id="jadwalSolarStatus" class="jadwal-grid"></div>
     </div>
     <div class="card">
       <div class="card-header">
@@ -1522,8 +1681,17 @@
         </div>
       </div>
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+      <p style="font-size:12px;color:var(--text3)">Instansi<br><strong style="color:var(--text2)" id="aboutDinas">Dinas Perhubungan Kabupaten Luwu Timur</strong></p>
+      <p style="font-size:12px;color:var(--text3);margin-top:10px">Bidang<br><strong style="color:var(--text2)" id="aboutBidang">Bidang Angkutan Jalan</strong></p>
+      <p style="font-size:12px;color:var(--text3);margin-top:10px;font-style:italic" id="aboutTagline">"Naik Bus Sekolah Aman, Safety First Jadi Kebiasaan"</p>
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
       <p style="font-size:12px;color:var(--text3)">Pengembang<br><strong style="color:var(--text2)" id="aboutDev">Angkutan Jalan_DISHUB LUTIM</strong></p>
-      <p style="font-size:12px;color:var(--text3);margin-top:10px">Versi Sistem<br><strong style="color:var(--text2)" id="aboutVersion">2.0.0</strong></p>
+      <p style="font-size:12px;color:var(--text3);margin-top:10px">Versi Sistem<br><strong style="color:var(--text2)" id="aboutVersion">3.0.0</strong></p>
+      <p style="font-size:12px;color:var(--text3);margin-top:10px">Status Sumber Data<br><strong id="aboutConnStatus">—</strong></p>
+      <p style="font-size:12px;color:var(--text3);margin-top:10px">Sinkronisasi Terakhir<br><strong style="color:var(--text2)" id="aboutLastSync">—</strong></p>
+      <p style="font-size:11px;color:var(--text3);margin-top:16px;padding:10px;background:var(--bg3);border-radius:8px">
+        Catatan Keamanan: autentikasi pada BOAS.PEMBUS berjalan sepenuhnya di sisi client/HTML (browser), sehingga <strong>bukan</strong> merupakan pengamanan tingkat server. Untuk kebutuhan keamanan tingkat tinggi/produksi, sistem ini perlu dikembangkan lebih lanjut menggunakan autentikasi &amp; otorisasi berbasis backend/server.
+      </p>
     </div>
   </div>
 
@@ -1547,6 +1715,9 @@
           <div class="form-field full"><label>Judul Dashboard</label><input id="cfgTitle"></div>
           <div class="form-field full"><label>Subjudul</label><input id="cfgSubtitle"></div>
           <div class="form-field"><label>Nama Instansi</label><input id="cfgInstansi"></div>
+          <div class="form-field"><label>Bidang</label><input id="cfgBidang"></div>
+          <div class="form-field full"><label>Nama Dinas</label><input id="cfgDinas"></div>
+          <div class="form-field full"><label>Tagline</label><input id="cfgTagline"></div>
           <div class="form-field"><label>Tahun</label><input id="cfgYear" type="number"></div>
           <div class="form-field"><label>Versi Sistem</label><input id="cfgVersion"></div>
           <div class="form-field"><label>Warna Aksen</label>
@@ -1554,6 +1725,15 @@
           </div>
         </div>
         <div class="btn-row" style="margin-top:16px;max-width:220px"><button class="btn-primary" onclick="saveUmumSettings()">Simpan Pengaturan</button></div>
+      </div>
+      <div class="card" style="max-width:640px;margin-top:16px">
+        <div class="card-header"><div><div class="card-title">Ambang Jadwal Komponen</div><div class="card-subtitle">Jumlah bulan sejak servis terakhir sebelum status berubah menjadi "Mendekati Jadwal" / "Jatuh Tempo". Dihitung dari tanggal transaksi Google Sheets — jika tidak ada tanggal, status akan ditampilkan "Tidak Ada Data", bukan perkiraan.</div></div></div>
+        <div class="form-grid">
+          <div class="form-field"><label>Interval Ban (bulan)</label><input id="cfgJadwalBan" type="number" min="1"></div>
+          <div class="form-field"><label>Interval Oli (bulan)</label><input id="cfgJadwalOli" type="number" min="1"></div>
+          <div class="form-field"><label>Interval Filter Solar (bulan)</label><input id="cfgJadwalSolar" type="number" min="1"></div>
+        </div>
+        <div class="btn-row" style="margin-top:16px;max-width:220px"><button class="btn-primary" onclick="saveJadwalSettings()">Simpan Ambang Jadwal</button></div>
       </div>
     </div>
 
@@ -1654,10 +1834,33 @@
 <div class="sched-float-bar" id="schedFloatBar">
   <div class="sched-float-bar-inner" id="schedFloatBarInner"></div>
 </div>
+<nav class="bottom-nav" id="bottomNav">
+  <div class="bn-item active" data-menu="overview" onclick="showPage('overview'); syncBottomNav('overview')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+    Overview
+  </div>
+  <div class="bn-item" data-menu="armada" onclick="showPage('armada'); syncBottomNav('armada')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 13l1.5-5A2 2 0 016.4 6.5h11.2A2 2 0 0119.5 8L21 13M3 13v5a1 1 0 001 1h1a1 1 0 001-1v-1h12v1a1 1 0 001 1h1a1 1 0 001-1v-5M3 13h18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="1.4" stroke-width="2"/><circle cx="17" cy="18" r="1.4" stroke-width="2"/></svg>
+    Armada
+  </div>
+  <div class="bn-item" data-menu="anggaran" onclick="showPage('anggaran'); syncBottomNav('anggaran')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/><path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"/></svg>
+    Anggaran
+  </div>
+  <div class="bn-item" data-menu="pemeliharaan" onclick="showPage('pemeliharaan'); syncBottomNav('pemeliharaan')">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 01-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 015.4-5.4l-3 3-2-2z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Rawat
+  </div>
+  <div class="bn-item" data-menu="__more" onclick="toggleSidebarMobile()">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" stroke-width="2"/><circle cx="12" cy="12" r="1.6" stroke-width="2"/><circle cx="19" cy="12" r="1.6" stroke-width="2"/></svg>
+    Lainnya
+  </div>
+</nav>
 </div><!-- /appShell -->
 
 <!-- MODAL ROOT -->
 <div class="modal-backdrop hidden" id="modalRoot"></div>
+<div id="printArea"></div>
 
 <script>
 /* ════════════════════════════════════════════════
@@ -1667,16 +1870,21 @@
    hidup di SATU objek ini dan disimpan ke localStorage.
 ═══════════════════════════════════════════════ */
 const DEFAULT_SHEET_ID = '1dxajA2HLkiJKWVixcIbQI50B1CVUa4DHktJModqxb6w';
-const LS_KEY = 'boasPembusConfigV2';
+const LS_KEY = 'boasPembusConfigV3';
+const LS_KEY_LEGACY = ['boasPembusConfigV2', 'boasPembusConfigV1']; // untuk migrasi otomatis dari versi lama
 
 function defaultConfig() {
   return {
+    configVersion: 3,
     app: {
       title: 'BUS OPERATION AND MAINTENANCE SYSTEM',
       subtitle: 'BOAS.PEMBUS',
       instansi: 'Angkutan Jalan_DISHUB LUTIM',
+      bidang: 'Bidang Angkutan Jalan',
+      dinas: 'Dinas Perhubungan Kabupaten Luwu Timur',
+      tagline: 'Naik Bus Sekolah Aman, Safety First Jadi Kebiasaan',
       year: 2026,
-      version: '2.0.0'
+      version: '3.0.0'
     },
     theme: { mode: 'dark', accent: 'blue', animasi: true },
     // Password TIDAK disimpan polos — disimpan sebagai hash SHA-256 (lihat AUTHENTICATION).
@@ -1709,7 +1917,12 @@ function defaultConfig() {
     armada: [],
     sopir: [],
     harga: [],
-    pemeliharaan: []
+    pemeliharaan: [],
+    // Ambang jadwal komponen (dalam bulan) dipakai Data Quality & halaman Ban/Oli/Solar
+    // untuk menghitung status "Mendekati Jadwal" / "Jatuh Tempo" dari tanggal servis TERAKHIR.
+    // Jika tidak ada data tanggal untuk suatu TNKB, sistem TIDAK akan mengarang perkiraan —
+    // status akan ditampilkan "Tidak Ada Data".
+    jadwal: { ban: 6, oli: 3, solar: 3 }
   };
 }
 
@@ -1719,22 +1932,35 @@ function saveConfig() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(CONFIG)); return true; }
   catch(e) { console.error('Gagal menyimpan konfigurasi', e); return false; }
 }
+function applyParsedConfig(parsed) {
+  // Merge dangkal agar field baru dari versi kode terbaru tetap ada
+  CONFIG = Object.assign(defaultConfig(), parsed);
+  CONFIG.app = Object.assign(defaultConfig().app, parsed.app||{});
+  CONFIG.theme = Object.assign(defaultConfig().theme, parsed.theme||{});
+  CONFIG.auth = Object.assign(defaultConfig().auth, parsed.auth||{});
+  CONFIG.sheets = Object.assign(defaultConfig().sheets, parsed.sheets||{});
+  CONFIG.refresh = Object.assign(defaultConfig().refresh, parsed.refresh||{});
+  CONFIG.menus = Object.assign(defaultConfig().menus, parsed.menus||{});
+  CONFIG.mapping = Object.assign(defaultConfig().mapping, parsed.mapping||{});
+  CONFIG.about = Object.assign(defaultConfig().about, parsed.about||{});
+  CONFIG.jadwal = Object.assign(defaultConfig().jadwal, parsed.jadwal||{});
+  CONFIG.configVersion = 3;
+}
 function loadConfigFromStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    // Merge dangkal agar field baru dari versi kode terbaru tetap ada
-    CONFIG = Object.assign(defaultConfig(), parsed);
-    CONFIG.app = Object.assign(defaultConfig().app, parsed.app||{});
-    CONFIG.theme = Object.assign(defaultConfig().theme, parsed.theme||{});
-    CONFIG.auth = Object.assign(defaultConfig().auth, parsed.auth||{});
-    CONFIG.sheets = Object.assign(defaultConfig().sheets, parsed.sheets||{});
-    CONFIG.refresh = Object.assign(defaultConfig().refresh, parsed.refresh||{});
-    CONFIG.menus = Object.assign(defaultConfig().menus, parsed.menus||{});
-    CONFIG.mapping = Object.assign(defaultConfig().mapping, parsed.mapping||{});
-    CONFIG.about = Object.assign(defaultConfig().about, parsed.about||{});
-    return true;
+    if (raw) { applyParsedConfig(JSON.parse(raw)); return true; }
+    // Tidak ada konfigurasi V3 — coba migrasi dari versi lama agar tidak ada data yang hilang
+    for (const legacyKey of LS_KEY_LEGACY) {
+      const legacyRaw = localStorage.getItem(legacyKey);
+      if (legacyRaw) {
+        applyParsedConfig(JSON.parse(legacyRaw));
+        saveConfig(); // simpan langsung sebagai konfigurasi V3
+        console.info('Konfigurasi berhasil dimigrasikan dari ' + legacyKey + ' ke ' + LS_KEY);
+        return true;
+      }
+    }
+    return false;
   } catch(e) { console.warn('Konfigurasi tersimpan rusak, memakai default', e); return false; }
 }
 
@@ -2478,6 +2704,7 @@ const G = {
   pajakKendaraan: PAJAK_KENDARAAN,
   spjData:        EMBEDDED_DATA,
   driverMap:      DRIVER_MAP,
+  connection:     { status:'connecting', source:null, lastSync:null, message:'Menghubungkan…' },
 };
 
 /* ════════════════════════════════════════════════
@@ -2501,7 +2728,14 @@ function showPage(id, el) {
   document.getElementById('pageTitle').textContent = titles[id] || id;
   CURRENT_PAGE = id;
   renderPageContent(id);
+  syncBottomNav(id);
+  closeSidebarMobile();
 }
+function syncBottomNav(id) {
+  document.querySelectorAll('.bn-item[data-menu]').forEach(b => b.classList.toggle('active', b.getAttribute('data-menu')===id));
+}
+function toggleSidebarMobile() { document.body.classList.toggle('sidebar-open'); }
+function closeSidebarMobile() { document.body.classList.remove('sidebar-open'); }
 
 function renderPageContent(id) {
   try {
@@ -2906,6 +3140,7 @@ async function loadData() {
   if (btn) { btn.classList.add('loading'); btn.textContent = 'Memuat...'; }
 
   setStatus('Menghubungkan ke Sheets…', true);
+  G.connection = { status:'connecting', source:null, lastSync:G.connection?.lastSync||null, message:'Menghubungkan ke Google Sheets…' };
 
   try {
     // ── FETCH SHEET REKAP SPJ ──
@@ -2925,10 +3160,12 @@ async function loadData() {
         const src = source === 'gviz' ? 'GViz' : 'CSV';
         setStatus(`Live (${src}) · ${parsed.length} nota · ${new Date().toLocaleTimeString('id-ID')}`, true);
         document.getElementById('syncStatus').style.color = 'var(--accent4)';
+        G.connection = { status:'connected', source:src, lastSync:new Date(), message:`Terhubung (${src}), ${parsed.length} nota` };
       } else {
         G.spjData   = EMBEDDED_DATA;
         G.driverMap = DRIVER_MAP;
         setStatus('Sheet terhubung, parse 0 baris — data lokal', false);
+        G.connection = { status:'no-data', source:source, lastSync:new Date(), message:'Sheet terhubung tetapi tidak ada baris yang terbaca — periksa nama Sheet/Tab dan header.' };
       }
     }
 
@@ -2937,6 +3174,7 @@ async function loadData() {
     G.spjData   = EMBEDDED_DATA;
     G.driverMap = DRIVER_MAP;
     setStatus('Offline — data lokal (' + (err.message||'') + ')', false);
+    G.connection = { status:'failed', source:null, lastSync:G.connection?.lastSync||null, message:'Koneksi spreadsheet gagal. Periksa URL, nama Sheet/Tab, dan akses spreadsheet. (' + (err.message||'') + ')' };
     console.warn('Sheets fetch error:', err);
   }
 
@@ -2980,6 +3218,9 @@ function renderAll() {
   safeCall(renderBanGabung, 'renderBanGabung');
   safeCall(renderOliGabung, 'renderOliGabung');
   safeCall(renderSolarGabung, 'renderSolarGabung');
+  safeCall(renderJadwalStatus, 'renderJadwalStatus');
+  safeCall(renderDataQuality, 'renderDataQuality');
+  safeCall(renderConnBanner, 'renderConnBanner');
   if (typeof CURRENT_PAGE !== 'undefined' && typeof renderPageContent === 'function') safeCall(() => renderPageContent(CURRENT_PAGE), 'renderPageContent');
 }
 
@@ -3731,8 +3972,218 @@ function renderSolarGabung() {
 }
 
 /* ════════════════════════════════════════════════
-   AUTO REFRESH EVERY 5 MIN
+   JADWAL KOMPONEN — status Normal / Mendekati Jadwal / Jatuh Tempo
+   Dihitung HANYA dari tanggal transaksi Google Sheets yang benar-benar ada.
+   Jika tidak ada data tanggal untuk suatu TNKB pada kategori tsb → "Tidak Ada Data"
+   (tidak pernah membuat angka perkiraan).
 ═══════════════════════════════════════════════ */
+function lastServiceDate(tnkb, keys) {
+  // Cari record terbaru dari G.spjData yang punya salah satu kolom `keys` > 0, untuk TNKB tsb.
+  const rows = (G.spjData||[]).filter(d => d.tnkb === tnkb && keys.some(k => (d[k]||0) > 0));
+  if (!rows.length) return null;
+  let best = null, bestScore = -1;
+  rows.forEach(d => {
+    const yMatch = String(d.tanggal||'').match(/(\d{4})/);
+    const year = yMatch ? parseInt(yMatch[1]) : null;
+    const monthIdx = MONTHS_ALL.indexOf(d.bulan);
+    if (year === null || monthIdx === -1) return;
+    const score = year*12 + monthIdx;
+    if (score > bestScore) { bestScore = score; best = { year, monthIdx, label: d.tanggal || (d.bulan+' '+year) }; }
+  });
+  return best;
+}
+function jadwalStatusOf(lastDate, intervalMonths) {
+  if (!lastDate) return { status:'tidak-ada-data', label:'Tidak Ada Data', months:null };
+  const now = new Date();
+  const nowScore = now.getFullYear()*12 + now.getMonth();
+  const lastScore = lastDate.year*12 + lastDate.monthIdx;
+  const months = Math.max(0, nowScore - lastScore);
+  if (months >= intervalMonths) return { status:'jatuh-tempo', label:'Jatuh Tempo', months };
+  if (months >= Math.round(intervalMonths*0.7)) return { status:'mendekati', label:'Mendekati Jadwal', months };
+  return { status:'normal', label:'Normal', months };
+}
+function renderJadwalGrid(containerId, keys, intervalMonths) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const allTNKB = [...new Set((G.spjData||[]).map(d=>d.tnkb))].sort();
+  if (!allTNKB.length) { el.innerHTML = `<div class="jadwal-empty">Belum ada data kendaraan dari sumber data aktif.</div>`; return; }
+  const items = allTNKB.map(tnkb => {
+    const last = lastServiceDate(tnkb, keys);
+    const st = jadwalStatusOf(last, intervalMonths);
+    return { tnkb, last, st };
+  });
+  // Urutkan: Jatuh Tempo → Mendekati → Normal → Tidak Ada Data
+  const order = { 'jatuh-tempo':0, 'mendekati':1, 'normal':2, 'tidak-ada-data':3 };
+  items.sort((a,b) => order[a.st.status]-order[b.st.status]);
+  el.innerHTML = items.map(it => `
+    <div class="jadwal-item">
+      <div class="ji-tnkb">${escapeHtml(it.tnkb)}</div>
+      <div class="ji-info">${it.last ? 'Terakhir: ' + escapeHtml(it.last.label) + ' (' + it.st.months + ' bln lalu)' : 'Belum ada catatan transaksi'}</div>
+      <span class="status-chip ${it.st.status}">${it.st.label}</span>
+    </div>`).join('');
+}
+function renderJadwalStatus() {  const iv = CONFIG.jadwal || { ban:6, oli:3, solar:3 };
+  renderJadwalGrid('jadwalBanStatus', ['ban_luar','ban_dalam','lidah_ban'], iv.ban);
+  renderJadwalGrid('jadwalOliStatus', ['oli','filter_oli'], iv.oli);
+  renderJadwalGrid('jadwalSolarStatus', ['f_solar_atas','f_solar_bawah'], iv.solar);
+}
+
+/* ════════════════════════════════════════════════
+   GLOBAL SEARCH — mencari di TNKB/armada, vendor, nota, sopir, rute, kecamatan, harga
+═══════════════════════════════════════════════ */
+function globalSearchGoTo(page) {
+  document.getElementById('globalSearchResults').classList.add('hidden');
+  document.getElementById('globalSearchInput').value = '';
+  showPage(page);
+}
+function globalSearch(qRaw) {
+  const box = document.getElementById('globalSearchResults');
+  const q = (qRaw||'').trim().toLowerCase();
+  if (q.length < 2) { box.classList.add('hidden'); box.innerHTML=''; return; }
+  const groups = [];
+
+  // Armada
+  const armadaHits = (CONFIG.armada||[]).filter(a => [a.tnkb,a.nama,a.wilayah,a.rute,a.sopir].join(' ').toLowerCase().includes(q)).slice(0,6);
+  if (armadaHits.length) groups.push({label:'Data Armada', items: armadaHits.map(a => ({main:a.tnkb, sub:`${a.nama||''} · ${a.wilayah||'-'} · ${a.status||'-'}`, page:'armada'}))});
+
+  // Sopir
+  const sopirHits = (CONFIG.sopir||[]).filter(s => [s.nama,s.tnkb,s.wilayah,s.rute].join(' ').toLowerCase().includes(q)).slice(0,6);
+  if (sopirHits.length) groups.push({label:'Sopir & Operator', items: sopirHits.map(s => ({main:s.nama, sub:`${s.jabatan||'-'} · TNKB ${s.tnkb||'-'} · ${s.rute||'-'}`, page:'sopir'}))});
+
+  // Harga
+  const hargaHits = (CONFIG.harga||[]).filter(h => [h.uraian,h.kategori,h.vendor].join(' ').toLowerCase().includes(q)).slice(0,6);
+  if (hargaHits.length) groups.push({label:'Harga Satuan', items: hargaHits.map(h => ({main:h.uraian, sub:`${h.kategori||'-'} · ${rpFull(h.harga||0)}`, page:'harga'}))});
+
+  // SPJ / Pengeluaran (vendor, TNKB, komponen)
+  const spjHits = (G.spjData||[]).filter(d => [d.tnkb,d.vendor,...(d.items_sc||[]).map(i=>i.uraian),...(d.items_pel||[]).map(i=>i.uraian)].join(' ').toLowerCase().includes(q)).slice(0,6);
+  if (spjHits.length) groups.push({label:'Detail Pengeluaran / SPJ', items: spjHits.map(d => ({main:`${d.tnkb} — ${d.vendor||'-'}`, sub:`${d.tanggal||'-'} · ${rpFull(d.total||d._totalSpj||0)} · ${d.bayar?'Lunas':'Belum Lunas'}`, page:'pengeluaran'}))});
+
+  const total = groups.reduce((s,g)=>s+g.items.length,0);
+  if (!total) { box.innerHTML = `<div class="gsr-empty">Tidak ditemukan hasil untuk "${escapeHtml(qRaw)}".</div>`; box.classList.remove('hidden'); return; }
+  box.innerHTML = groups.map(g => `
+    <div class="gsr-group-label">${g.label}</div>
+    ${g.items.map(it => `<div class="gsr-item" onclick="globalSearchGoTo('${it.page}')">
+      <div><div class="gsr-main">${escapeHtml(it.main||'-')}</div><div class="gsr-sub">${escapeHtml(it.sub||'')}</div></div>
+      <span class="gsr-go">Lihat →</span>
+    </div>`).join('')}
+  `).join('');
+  box.classList.remove('hidden');
+}
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('globalSearchResults');
+  const wrap = document.querySelector('.topbar-search');
+  if (box && wrap && !wrap.contains(e.target) && !box.contains(e.target)) box.classList.add('hidden');
+});
+
+/* ════════════════════════════════════════════════
+   DATA QUALITY MONITOR — deteksi data kosong, duplikat, tanggal/nominal tidak valid
+═══════════════════════════════════════════════ */
+function computeDataQualityIssues() {
+  const issues = [];
+  // 1. TNKB duplikat di Data Armada
+  const tnkbSeen = {};
+  (CONFIG.armada||[]).forEach(a => { const k=(a.tnkb||'').trim().toUpperCase(); if(!k) return; tnkbSeen[k]=(tnkbSeen[k]||0)+1; });
+  const dupTnkb = Object.entries(tnkbSeen).filter(([,n])=>n>1);
+  if (dupTnkb.length) issues.push({ type:'TNKB Duplikat', count:dupTnkb.length, detail:dupTnkb.map(d=>d[0]).join(', '), level:'warn' });
+
+  // 2. Tanggal tidak valid / kosong pada SPJ
+  const noTanggal = (G.spjData||[]).filter(d => !d.bulan);
+  if (noTanggal.length) issues.push({ type:'Tanggal Transaksi Tidak Terbaca', count:noTanggal.length, detail:'Pada catatan SPJ — periksa format kolom tanggal di Sheets', level:'warn' });
+
+  // 3. Vendor kosong
+  const noVendor = (G.spjData||[]).filter(d => !d.vendor || !d.vendor.trim());
+  if (noVendor.length) issues.push({ type:'Vendor / Penyedia Kosong', count:noVendor.length, detail:'Nota SPJ tanpa nama vendor', level:'info' });
+
+  // 4. Nominal tidak valid (total 0 padahal ada item)
+  const badNominal = (G.spjData||[]).filter(d => (d.total||d._totalSpj||0) <= 0 && ((d.items_sc||[]).length || (d.items_pel||[]).length));
+  if (badNominal.length) issues.push({ type:'Nominal Total Tidak Valid', count:badNominal.length, detail:'Ada uraian barang/jasa tetapi total Rp = 0', level:'err' });
+
+  // 5. Mapping kolom belum lengkap (masih placeholder default kosong)
+  const mapMissing = Object.entries(CONFIG.mapping||{}).filter(([,v]) => !v || String(v).trim()==='');
+  if (mapMissing.length) issues.push({ type:'Data Mapping Belum Lengkap', count:mapMissing.length, detail:mapMissing.map(m=>m[0]).join(', '), level:'warn' });
+
+  // 6. Status koneksi sumber data
+  if (G.connection && G.connection.status === 'failed') issues.push({ type:'Koneksi Spreadsheet Gagal', count:1, detail:G.connection.message||'Periksa URL, nama Sheet/Tab, dan akses spreadsheet.', level:'err' });
+
+  return issues;
+}
+function renderDataQuality() {
+  const wrap = document.getElementById('dataQualityCard');
+  if (!wrap) return;
+  const issues = computeDataQualityIssues();
+  const badge = document.getElementById('dqBadge');
+  if (badge) {
+    if (!issues.length) { badge.textContent = 'Baik'; badge.className = 'status-chip normal'; }
+    else { const hasErr = issues.some(i=>i.level==='err'); badge.textContent = issues.length + ' isu ditemukan'; badge.className = 'status-chip ' + (hasErr?'jatuh-tempo':'mendekati'); }
+  }
+  const body = document.getElementById('dqBody');
+  if (!body) return;
+  if (!issues.length) { body.innerHTML = `<div class="empty-state">Tidak ada masalah kualitas data yang terdeteksi saat ini.</div>`; return; }
+  body.innerHTML = issues.map(i => `
+    <div class="dq-row dq-${i.level}">
+      <div class="dq-type">${escapeHtml(i.type)} <span class="dq-count">${i.count}</span></div>
+      <div class="dq-detail">${escapeHtml(String(i.detail||'').slice(0,180))}</div>
+    </div>`).join('');
+}
+
+/* ════════════════════════════════════════════════
+   BANNER KONEKSI — tampil jelas di Overview saat sumber data gagal/tanpa data,
+   dengan penjelasan penyebab paling umum dan tombol tindak lanjut cepat.
+═══════════════════════════════════════════════ */
+function goToSheetSettings() {
+  if (!isAdmin()) { toast('Masuk sebagai Admin untuk mengubah Sumber Data.'); return; }
+  showPage('settings');
+  const tabEl = document.querySelector('.settings-tab[data-tab="sumberdata"]');
+  if (tabEl) switchSettingsTab('sumberdata', tabEl);
+}
+function renderConnBanner() {
+  const el = document.getElementById('connBanner');
+  if (!el) return;
+  const c = G.connection || {};
+  if (c.status === 'connected') { el.classList.add('hidden'); el.innerHTML=''; return; }
+
+  const isFileProtocol = location.protocol === 'file:';
+  const fileWarning = isFileProtocol ? `
+        <li><strong>File ini dibuka langsung dari komputer (file://)</strong> — banyak browser memblokir permintaan internet dari file lokal seperti ini. Ini penyebab paling umum. Solusi: buka lewat server lokal (contoh: jalankan <code>npx serve</code> di folder file ini lalu buka http://localhost), atau unggah file ke hosting (GitHub Pages, Netlify, dsb).</li>` : '';
+
+  if (c.status === 'failed') {
+    el.className = 'conn-banner';
+    el.innerHTML = `
+      <span>⚠️</span>
+      <div>
+        <b>Koneksi spreadsheet gagal — dashboard menampilkan data cadangan lokal.</b>
+        Periksa hal berikut lalu klik "Uji Koneksi":
+        <ul>
+          ${fileWarning}
+          <li>Spreadsheet sudah dibagikan sebagai <strong>"Siapa saja yang memiliki tautan → Melihat"</strong>.</li>
+          <li>Nama Sheet/Tab pada Sumber Data sudah sesuai dengan tab di Google Sheets (huruf besar/kecil berpengaruh).</li>
+          <li>Perangkat memiliki koneksi internet yang aktif.</li>
+        </ul>
+        <div class="cb-actions">
+          <button onclick="goToSheetSettings()">Buka Pengaturan Sumber Data</button>
+          <button onclick="loadData()">Coba Lagi</button>
+        </div>
+      </div>`;
+    el.classList.remove('hidden');
+  } else if (c.status === 'no-data') {
+    el.className = 'conn-banner warn';
+    el.innerHTML = `
+      <span>ℹ️</span>
+      <div>
+        <b>Sheet berhasil dihubungi tetapi tidak ada baris data yang terbaca.</b>
+        Periksa nama Sheet/Tab dan pastikan baris header (mis. kolom "TNKB") ada pada sheet aktif.
+        <div class="cb-actions">
+          <button onclick="goToSheetSettings()">Buka Pengaturan Sumber Data</button>
+          <button onclick="loadData()">Coba Lagi</button>
+        </div>
+      </div>`;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden'); el.innerHTML='';
+  }
+}
+
+
 setInterval(loadData, 5 * 60 * 1000);
 
 /* ════════════════════════════════════════════════
@@ -3833,6 +4284,7 @@ function applyBrandingToUI() {
   document.getElementById('ssTitle').textContent = CONFIG.app.title;
   document.getElementById('ssSub').textContent = CONFIG.app.instansi;
   document.getElementById('ssYear').textContent = 'Tahun Operasional ' + CONFIG.app.year;
+  const ssTag = document.getElementById('ssTagline'); if (ssTag) ssTag.textContent = '"' + (CONFIG.app.tagline||'') + '"';
   document.getElementById('sbTitle').innerHTML = CONFIG.app.title.replace(/ AND /,' AND<br>');
   document.getElementById('sbSub').textContent = CONFIG.app.instansi + ' · ' + CONFIG.app.year;
   const iv = document.getElementById('refreshIntervalLabel');
@@ -4172,12 +4624,20 @@ function renderSettingsPage() {
   document.getElementById('cfgTitle').value = CONFIG.app.title;
   document.getElementById('cfgSubtitle').value = CONFIG.app.subtitle;
   document.getElementById('cfgInstansi').value = CONFIG.app.instansi;
+  document.getElementById('cfgBidang').value = CONFIG.app.bidang||'';
+  document.getElementById('cfgDinas').value = CONFIG.app.dinas||'';
+  document.getElementById('cfgTagline').value = CONFIG.app.tagline||'';
   document.getElementById('cfgYear').value = CONFIG.app.year;
   document.getElementById('cfgVersion').value = CONFIG.app.version;
   document.getElementById('cfgAccent').value = CONFIG.theme.accent;
   document.getElementById('cfgAnimasi').checked = CONFIG.theme.animasi;
   document.getElementById('cfgSessionTimeout').value = CONFIG.auth.sessionTimeoutMin;
   document.getElementById('cfgRefreshInterval').value = String(CONFIG.refresh.interval);
+  if (document.getElementById('cfgJadwalBan')) {
+    document.getElementById('cfgJadwalBan').value = CONFIG.jadwal.ban;
+    document.getElementById('cfgJadwalOli').value = CONFIG.jadwal.oli;
+    document.getElementById('cfgJadwalSolar').value = CONFIG.jadwal.solar;
+  }
   renderSourceList();
   renderMappingList();
   renderMenuToggleList();
@@ -4188,10 +4648,22 @@ function saveUmumSettings() {
   CONFIG.app.title = document.getElementById('cfgTitle').value.trim() || CONFIG.app.title;
   CONFIG.app.subtitle = document.getElementById('cfgSubtitle').value.trim();
   CONFIG.app.instansi = document.getElementById('cfgInstansi').value.trim();
+  CONFIG.app.bidang = document.getElementById('cfgBidang').value.trim();
+  CONFIG.app.dinas = document.getElementById('cfgDinas').value.trim();
+  CONFIG.app.tagline = document.getElementById('cfgTagline').value.trim();
   CONFIG.app.year = parseInt(document.getElementById('cfgYear').value) || CONFIG.app.year;
   CONFIG.app.version = document.getElementById('cfgVersion').value.trim();
   CONFIG.theme.accent = document.getElementById('cfgAccent').value;
   saveConfig(); applyBrandingToUI(); applyThemeMode(); toast('Pengaturan umum disimpan.');
+}
+function saveJadwalSettings() {
+  if (!isAdmin()) return;
+  CONFIG.jadwal.ban = parseInt(document.getElementById('cfgJadwalBan').value) || CONFIG.jadwal.ban;
+  CONFIG.jadwal.oli = parseInt(document.getElementById('cfgJadwalOli').value) || CONFIG.jadwal.oli;
+  CONFIG.jadwal.solar = parseInt(document.getElementById('cfgJadwalSolar').value) || CONFIG.jadwal.solar;
+  saveConfig();
+  safeCall(renderJadwalStatus, 'renderJadwalStatus');
+  toast('Ambang jadwal komponen disimpan.');
 }
 async function changeGuestPassword() {
   if (!isAdmin()) return;
@@ -4261,6 +4733,18 @@ function renderAboutPage() {
   document.getElementById('aboutDev').textContent = CONFIG.app.instansi;
   document.getElementById('aboutVersion').textContent = CONFIG.app.version;
   document.getElementById('aboutEditText').value = CONFIG.about.text;
+  const dinasEl = document.getElementById('aboutDinas'); if (dinasEl) dinasEl.textContent = CONFIG.app.dinas || '—';
+  const bidangEl = document.getElementById('aboutBidang'); if (bidangEl) bidangEl.textContent = CONFIG.app.bidang || '—';
+  const tagEl = document.getElementById('aboutTagline'); if (tagEl) tagEl.textContent = '"' + (CONFIG.app.tagline||'') + '"';
+  const connEl = document.getElementById('aboutConnStatus');
+  if (connEl) {
+    const c = G.connection || {};
+    const map = { connected:['Terhubung','var(--accent4)'], connecting:['Menghubungkan…','var(--accent3)'], failed:['Gagal Terhubung','var(--danger)'], 'no-data':['Terhubung, Tanpa Data','var(--accent3)'] };
+    const [label, color] = map[c.status] || ['Tidak Diketahui','var(--text3)'];
+    connEl.textContent = label; connEl.style.color = color;
+  }
+  const syncEl = document.getElementById('aboutLastSync');
+  if (syncEl) syncEl.textContent = (G.connection && G.connection.lastSync) ? new Date(G.connection.lastSync).toLocaleString('id-ID') : '—';
 }
 function saveAboutText() {
   if (!isAdmin()) return;
@@ -4275,13 +4759,14 @@ function escapeHtml(s) { return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp
 function escapeAttr(s) { return escapeHtml(s); }
 function openModal(title, bodyHtml, onSave) {
   const root = document.getElementById('modalRoot');
+  const readOnly = typeof onSave !== 'function';
   root.innerHTML = `<div class="modal-box">
     <div class="modal-head"><h3>${escapeHtml(title)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">${bodyHtml}</div>
-    <div class="modal-foot"><button class="btn-secondary" onclick="closeModal()">Batal</button><button class="btn-primary" id="modalSaveBtn">Simpan</button></div>
+    <div class="modal-foot"><button class="btn-secondary" onclick="closeModal()">${readOnly?'Tutup':'Batal'}</button>${readOnly?'':'<button class="btn-primary" id="modalSaveBtn">Simpan</button>'}</div>
   </div>`;
   root.classList.remove('hidden');
-  document.getElementById('modalSaveBtn').onclick = () => { const ok = onSave(); if (ok !== false) closeModal(); };
+  if (!readOnly) document.getElementById('modalSaveBtn').onclick = () => { const ok = onSave(); if (ok !== false) closeModal(); };
 }
 function closeModal() { document.getElementById('modalRoot').classList.add('hidden'); document.getElementById('modalRoot').innerHTML=''; }
 
@@ -4294,6 +4779,52 @@ function exportTableCSV(kind) {
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = kind+'.csv'; a.click();
   toast('Data ' + kind + ' diexport ke CSV.');
+}
+
+/* ════════════════════════════════════════════════
+   CETAK LAPORAN RINGKAS (Simple Report / Print)
+═══════════════════════════════════════════════ */
+function printSimpleReport() {
+  const val = (id) => { const el = document.getElementById(id); return el ? el.textContent : '—'; };
+  const now = new Date().toLocaleString('id-ID');
+  const armada = CONFIG.armada||[];
+  const aktif = armada.filter(a=>a.status==='Aktif').length;
+  const perawatan = armada.filter(a=>a.status==='Dalam Perawatan').length;
+  const nonaktif = armada.filter(a=>a.status==='Tidak Aktif').length;
+  const dq = computeDataQualityIssues();
+  const spjRows = (G.spjData||[]).slice().sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')).slice(0,15);
+
+  document.getElementById('printArea').innerHTML = `
+    <h1>${escapeHtml(CONFIG.app.subtitle||'BOAS.PEMBUS')} — Laporan Ringkas</h1>
+    <div style="font-size:11px;color:#333">${escapeHtml(CONFIG.app.dinas||'')} · ${escapeHtml(CONFIG.app.bidang||'')} · Dicetak: ${now}</div>
+
+    <h2>Ringkasan Anggaran</h2>
+    <div class="pr-kpi">
+      <div><b>Total Anggaran:</b> ${val('m-total-anggaran')}</div>
+      <div><b>Total SPJ/Realisasi:</b> ${val('m-total-spj')}</div>
+      <div><b>Sisa Anggaran:</b> ${val('m-sisa')}</div>
+      <div><b>Status Pembayaran:</b> ${val('m-bayar')}</div>
+    </div>
+
+    <h2>Kondisi Armada</h2>
+    <div class="pr-kpi">
+      <div><b>Total:</b> ${armada.length}</div>
+      <div><b>Aktif:</b> ${aktif}</div>
+      <div><b>Dalam Perawatan:</b> ${perawatan}</div>
+      <div><b>Tidak Aktif:</b> ${nonaktif}</div>
+    </div>
+
+    <h2>Data Quality Monitor</h2>
+    ${dq.length ? `<table><thead><tr><th>Isu</th><th>Jumlah</th><th>Keterangan</th></tr></thead><tbody>
+      ${dq.map(i=>`<tr><td>${escapeHtml(i.type)}</td><td>${i.count}</td><td>${escapeHtml(String(i.detail||'').slice(0,120))}</td></tr>`).join('')}
+    </tbody></table>` : '<div>Tidak ada masalah kualitas data terdeteksi.</div>'}
+
+    <h2>Pengeluaran Terbaru (15 Nota)</h2>
+    <table><thead><tr><th>Tanggal</th><th>TNKB</th><th>Vendor</th><th>Total</th><th>Status</th></tr></thead><tbody>
+      ${spjRows.map(d=>`<tr><td>${escapeHtml(d.tanggal||'-')}</td><td>${escapeHtml(d.tnkb||'-')}</td><td>${escapeHtml(d.vendor||'-')}</td><td>${rpFull(d.total||d._totalSpj||0)}</td><td>${d.bayar?'Lunas':'Belum Lunas'}</td></tr>`).join('')}
+    </tbody></table>
+  `;
+  window.print();
 }
 
 /* ════════════════════════════════════════════════
@@ -4324,14 +4855,15 @@ function renderArmadaTable() {
     (!q || [a.tnkb,a.nama,a.sopir,a.rute,a.wilayah].join(' ').toLowerCase().includes(q))
   );
   const tbl = document.getElementById('armadaTable');
-  const head = `<thead><tr><th>No</th><th>TNKB</th><th>Nama Armada</th><th>Merek/Tipe</th><th>Th.</th><th>No. Lambung</th><th>Wilayah</th><th>Sopir</th><th>Rute</th><th>Status</th><th>KM</th><th>Kapasitas</th><th>BBM</th>${isAdmin()?'<th>Aksi</th>':''}</tr></thead>`;
-  if (!rows.length) { tbl.innerHTML = head + `<tbody><tr><td colspan="14"><div class="empty-state">Tidak ada data armada.</div></td></tr></tbody>`; return; }
+  const head = `<thead><tr><th>No</th><th>TNKB</th><th>Nama Armada</th><th>Merek/Tipe</th><th>Th.</th><th>No. Lambung</th><th>Wilayah</th><th>Sopir</th><th>Rute</th><th>Status</th><th>KM</th><th>Kapasitas</th><th>BBM</th><th>Detail</th>${isAdmin()?'<th>Aksi</th>':''}</tr></thead>`;
+  if (!rows.length) { tbl.innerHTML = head + `<tbody><tr><td colspan="15"><div class="empty-state">Tidak ada data armada.</div></td></tr></tbody>`; return; }
   tbl.innerHTML = head + '<tbody>' + rows.map((a,i)=>`<tr>
     <td>${i+1}</td><td style="font-family:var(--mono)">${escapeHtml(a.tnkb)}</td><td>${escapeHtml(a.nama)}</td>
     <td>${escapeHtml(a.merek)} / ${escapeHtml(a.tipe)}</td><td>${escapeHtml(a.tahun)}</td><td>${escapeHtml(a.lambung)}</td>
     <td>${escapeHtml(a.wilayah)}</td><td>${escapeHtml(a.sopir)}</td><td>${escapeHtml(a.rute)}</td>
     <td><span class="status-chip ${statusChipClass(a.status)}">${escapeHtml(a.status)}</span></td>
     <td>${(a.km||0).toLocaleString('id-ID')}</td><td>${escapeHtml(a.kapasitas)}</td><td>${escapeHtml(a.bbm)}</td>
+    <td class="actions"><button class="btn-sm" onclick="openArmadaDetail('${a.tnkb}')">Lihat</button></td>
     ${isAdmin() ? `<td class="actions"><button class="btn-sm" onclick="openArmadaModal('${a.id}')">Edit</button><button class="btn-sm danger" onclick="deleteArmada('${a.id}')">Hapus</button></td>` : ''}
   </tr>`).join('') + '</tbody>';
 }
@@ -4376,6 +4908,66 @@ function deleteArmada(id) {
   if (!confirm('Hapus data armada ini?')) return;
   CONFIG.armada = CONFIG.armada.filter(a=>a.id!==id);
   saveConfig(); renderArmadaStats(); renderArmadaTable(); toast('Armada dihapus.');
+}
+
+/* ════════════════════════════════════════════════
+   VEHICLE HEALTH & DETAIL ARMADA (read-only, semua role)
+   Indikator hanya diisi jika benar-benar ada data pendukung dari Sheets/Pemeliharaan.
+   Tidak pernah mengarang status — default selalu "Tidak Ada Data".
+═══════════════════════════════════════════════ */
+function vehicleHealthOf(tnkb) {
+  const rows = (G.spjData||[]).filter(d => d.tnkb === tnkb);
+  const categories = [
+    { key:'tire',      label:'Ban',            test: d => (d.ban_luar||0)+(d.ban_dalam||0)+(d.lidah_ban||0) > 0 },
+    { key:'oil',        label:'Oli',            test: d => (d.oli||0) > 0 },
+    { key:'solar',      label:'Filter Solar',   test: d => (d.f_solar_atas||0)+(d.f_solar_bawah||0) > 0 },
+    { key:'engine',     label:'Engine',         test: null },
+    { key:'brake',      label:'Rem',            test: null },
+    { key:'electrical', label:'Kelistrikan',    test: null },
+    { key:'body',       label:'Body',           test: null },
+    { key:'chassis',    label:'Chassis',        test: null },
+    { key:'interior',   label:'Interior',       test: null },
+  ];
+  const iv = CONFIG.jadwal || { ban:6, oli:3, solar:3 };
+  const intervalOf = { tire: iv.ban, oil: iv.oli, solar: iv.solar };
+  return categories.map(c => {
+    if (!c.test) return { ...c, status:'tidak-ada-data', label2:'Tidak Ada Data' };
+    const hit = rows.some(c.test);
+    if (!hit) return { ...c, status:'tidak-ada-data', label2:'Tidak Ada Data' };
+    const keysMap = { tire:['ban_luar','ban_dalam','lidah_ban'], oil:['oli'], solar:['f_solar_atas','f_solar_bawah'] };
+    const last = lastServiceDate(tnkb, keysMap[c.key]);
+    const st = jadwalStatusOf(last, intervalOf[c.key] || 6);
+    return { ...c, status: st.status === 'jatuh-tempo' ? 'perlu-perhatian' : (st.status === 'mendekati' ? 'perlu-perhatian' : 'normal'), label2: st.status==='jatuh-tempo' ? 'Segera Ditangani' : (st.status==='mendekati' ? 'Perlu Perhatian' : 'Normal') };
+  });
+}
+function openArmadaDetail(tnkb) {
+  const a = (CONFIG.armada||[]).find(x=>x.tnkb===tnkb) || { tnkb };
+  const health = vehicleHealthOf(tnkb);
+  const riwayat = (G.spjData||[]).filter(d=>d.tnkb===tnkb).sort((x,y)=> (y.tanggal||'').localeCompare(x.tanggal||''));
+  const totalBiaya = riwayat.reduce((s,d)=>s+(d.total||d._totalSpj||0),0);
+  const healthClassMap = { 'normal':'normal', 'perlu-perhatian':'mendekati', 'tidak-ada-data':'tidak-ada-data' };
+  const healthHtml = health.map(h => `<div class="jadwal-item"><div class="ji-tnkb" style="font-family:inherit">${h.label}</div><span class="status-chip ${healthClassMap[h.status]}">${h.label2}</span></div>`).join('');
+  const riwayatHtml = riwayat.length ? riwayat.slice(0,20).map(d => `
+    <tr><td>${escapeHtml(d.tanggal||'-')}</td><td>${escapeHtml(d.vendor||'-')}</td>
+    <td style="text-align:right;font-family:var(--mono)">${rpFull(d.total||d._totalSpj||0)}</td>
+    <td><span class="status-chip ${d.bayar?'lunas':'menunggu'}">${d.bayar?'Lunas':'Belum Lunas'}</span></td></tr>`).join('')
+    : `<tr><td colspan="4"><div class="empty-state">Belum ada riwayat pengeluaran/pemeliharaan untuk kendaraan ini.</div></td></tr>`;
+  openModal('Detail Armada — ' + tnkb, `
+    <div class="form-grid" style="margin-bottom:14px">
+      <div class="form-field"><label>Nama Armada</label><div>${escapeHtml(a.nama||'—')}</div></div>
+      <div class="form-field"><label>Merek / Tipe</label><div>${escapeHtml(a.merek||'—')} / ${escapeHtml(a.tipe||'—')}</div></div>
+      <div class="form-field"><label>Wilayah / Rute</label><div>${escapeHtml(a.wilayah||'—')} / ${escapeHtml(a.rute||'—')}</div></div>
+      <div class="form-field"><label>Sopir / Operator</label><div>${escapeHtml(a.sopir||'—')} / ${escapeHtml(a.operator||'—')}</div></div>
+      <div class="form-field"><label>Status</label><div><span class="status-chip ${statusChipClass(a.status)}">${escapeHtml(a.status||'—')}</span></div></div>
+      <div class="form-field"><label>Total Biaya Tercatat</label><div style="font-family:var(--mono);color:var(--accent3);font-weight:700">${rpFull(totalBiaya)}</div></div>
+    </div>
+    <div class="card-title" style="margin-bottom:6px">Vehicle Health</div>
+    <div class="jadwal-grid" style="padding:0 0 14px">${healthHtml}</div>
+    <div class="card-title" style="margin-bottom:6px">Riwayat Pengeluaran / Pemeliharaan (terbaru)</div>
+    <div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">
+      <table class="data-table"><thead><tr><th>Tanggal</th><th>Vendor</th><th style="text-align:right">Total</th><th>Status</th></tr></thead><tbody>${riwayatHtml}</tbody></table>
+    </div>
+  `, null);
 }
 
 /* ════════════════════════════════════════════════
