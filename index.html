@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOAS.PEMBUS V3 — Dinas Perhubungan Kabupaten Luwu Timur</title>
+<title>BOAS.PEMBUS V2 — Dinas Perhubungan Kabupaten Luwu Timur</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -881,10 +881,19 @@
   .ss-admin-error { color: var(--danger); font-size: 11px; margin-top: 6px; min-height: 14px; }
   .ss-footnote { position:absolute; bottom:14px; font-size: 9.5px; color: var(--text3); text-align:center; z-index:2; font-family: var(--mono); opacity:.7; }
 
+  /* Strip indikator dekoratif dasbor (FUEL/OIL/TEMP/BRAKE/ENGINE) — bukan data kendaraan sebenarnya */
+  .ss-dash-strip { position: relative; z-index: 2; width: min(560px, 92%); margin-top: 14px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .ss-dash-item { width: 84px; text-align: center; }
+  .ss-dash-bar { height: 5px; border-radius: 3px; background: #1c2740; overflow: hidden; margin-bottom: 5px; }
+  .ss-dash-bar i { display:block; height:100%; width:0%; border-radius:3px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .8s ease; }
+  .ss-dash-item span { font-family: var(--mono); font-size: 9px; letter-spacing:.08em; color: var(--text3); }
+  .ss-dash-note { position: relative; z-index: 2; font-size: 9.5px; color: var(--text3); font-family: var(--mono); margin-top: 6px; opacity: .6; text-align:center; max-width: 480px; }
+
   @media (max-width: 720px) {
     .ss-panel { grid-template-columns: 1fr; }
     .ss-gauge { display: none; }
     .wheel-wrap { width: 190px; height: 190px; }
+    .ss-dash-item { width: 64px; }
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -1016,7 +1025,7 @@
 ═══════════════════════════════════════════════════════════ -->
 <div id="startScreen">
   <div class="ss-brand">
-    <div class="ss-badge">BOAS · PEMBUS · V3</div>
+    <div class="ss-badge">BOAS · PEMBUS · V2</div>
     <h1 id="ssTitle">BUS OPERATION AND MAINTENANCE SYSTEM</h1>
     <div class="ss-sub" id="ssSub">Angkutan Jalan_DISHUB LUTIM</div>
     <div class="ss-instansi" id="ssYear">Tahun Operasional 2026</div>
@@ -1062,6 +1071,15 @@
       <div class="ss-gauge-label">FUEL LEVEL</div>
     </div>
   </div>
+
+  <div class="ss-dash-strip" id="ssDashStrip">
+    <div class="ss-dash-item"><div class="ss-dash-bar"><i id="dashBarFuel"></i></div><span>FUEL</span></div>
+    <div class="ss-dash-item"><div class="ss-dash-bar"><i id="dashBarOil"></i></div><span>OIL</span></div>
+    <div class="ss-dash-item"><div class="ss-dash-bar"><i id="dashBarTemp"></i></div><span>TEMP</span></div>
+    <div class="ss-dash-item"><div class="ss-dash-bar"><i id="dashBarBrake"></i></div><span>BRAKE</span></div>
+    <div class="ss-dash-item"><div class="ss-dash-bar"><i id="dashBarEngine"></i></div><span>ENGINE</span></div>
+  </div>
+  <div class="ss-dash-note">Indikator dekoratif layar pembuka — bukan data kondisi kendaraan aktual.</div>
 
   <button class="ss-admin-link" id="ssAdminLinkBtn">🔧 Login Admin</button>
 
@@ -1591,6 +1609,7 @@
     <div class="section-header">
       <h2>Data Armada Bus Sekolah</h2>
       <span class="pill">Data lokal / Google Sheets</span>
+      <button class="btn-secondary role-admin-only" style="margin-left:auto" onclick="syncArmadaSopirFromSheets()">🔄 Sinkronkan dari Sheets (Profile Kendaraan)</button>
     </div>
     <div class="stat-cards" id="armadaStats"></div>
     <div class="toolbar">
@@ -1611,6 +1630,7 @@
     <div class="section-header">
       <h2>Data Sopir &amp; Operator</h2>
       <span class="pill" id="sopirCount">—</span>
+      <button class="btn-secondary role-admin-only" style="margin-left:auto" onclick="syncArmadaSopirFromSheets()">🔄 Sinkronkan dari Sheets (Profile Kendaraan)</button>
     </div>
     <div class="toolbar">
       <input type="text" id="sopirSearch" placeholder="Cari nama, TNKB, wilayah…" oninput="renderSopirTable()">
@@ -1707,6 +1727,8 @@
       <div class="settings-tab" data-tab="menu" onclick="switchSettingsTab('menu',this)">Menu</div>
       <div class="settings-tab" data-tab="refresh" onclick="switchSettingsTab('refresh',this)">Refresh</div>
       <div class="settings-tab" data-tab="backup" onclick="switchSettingsTab('backup',this)">Backup</div>
+      <div class="settings-tab" data-tab="sesi" onclick="switchSettingsTab('sesi',this)">Monitoring Sesi</div>
+      <div class="settings-tab" data-tab="audit" onclick="switchSettingsTab('audit',this)">Audit Log</div>
     </div>
 
     <div class="settings-pane active" id="settings-umum">
@@ -1828,6 +1850,31 @@
         </div>
       </div>
     </div>
+
+    <div class="settings-pane" id="settings-sesi">
+      <div class="card" style="max-width:900px">
+        <div class="settings-section-title">Monitoring Sesi Pengguna</div>
+        <p style="font-size:11.5px;color:var(--text3);margin-bottom:12px">
+          Daftar sesi PUBLIK/ADMIN yang tercatat pada <b>browser ini</b>. Sesi disimpan lokal di perangkat (localStorage),
+          jadi panel ini <b>tidak dapat</b> melihat sesi yang dibuka di perangkat/browser lain — untuk monitoring lintas
+          perangkat sungguhan diperlukan penyimpanan sesi terpusat di server. Data operasional tetap terpisah dari
+          mekanisme sesi ini (Spreadsheet → Dashboard, satu arah).
+        </p>
+        <div id="sessionList"></div>
+      </div>
+    </div>
+
+    <div class="settings-pane" id="settings-audit">
+      <div class="card" style="max-width:900px">
+        <div class="settings-section-title">Audit Log</div>
+        <p style="font-size:11.5px;color:var(--text3);margin-bottom:12px">
+          Catatan aktivitas sistem (login/logout, kick sesi, perubahan konfigurasi) pada browser ini. Audit Log tidak
+          pernah mengubah data operasional Google Spreadsheet — bersifat murni catatan lokal dashboard.
+        </p>
+        <div class="btn-row" style="margin-bottom:12px;max-width:220px"><button class="btn-sm danger" onclick="clearAuditLog()">Bersihkan Log</button></div>
+        <div id="auditLogList"></div>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -1869,9 +1916,10 @@
    sumber Google Sheets, mapping kolom, menu, refresh, about)
    hidup di SATU objek ini dan disimpan ke localStorage.
 ═══════════════════════════════════════════════ */
-const DEFAULT_SHEET_ID = '1N6TJHlImm2yaeEkYZnH6sNhQZsamz8hn9puVU922lKQ';
-const LS_KEY = 'boasPembusConfigV3';
-const LS_KEY_LEGACY = ['boasPembusConfigV2', 'boasPembusConfigV1']; // untuk migrasi otomatis dari versi lama
+const DEFAULT_SHEET_ID = '1_7zVPevebMVV-ihPmupnArdAI0xykL2k'; // BOAS.PEMBUS V2 — Spreadsheet baru (satu-satunya sumber bawaan)
+const OLD_SHEET_IDS = ['1N6TJHlImm2yaeEkYZnH6sNhQZsamz8hn9puVU922lKQ']; // ID Spreadsheet LAMA — diputus, tidak boleh aktif lagi
+const LS_KEY = 'boasPembusConfigV4';
+const LS_KEY_LEGACY = ['boasPembusConfigV3', 'boasPembusConfigV2', 'boasPembusConfigV1']; // untuk migrasi otomatis dari versi lama
 
 function defaultConfig() {
   return {
@@ -1884,7 +1932,7 @@ function defaultConfig() {
       dinas: 'Dinas Perhubungan Kabupaten Luwu Timur',
       tagline: 'Naik Bus Sekolah Aman, Safety First Jadi Kebiasaan',
       year: 2026,
-      version: '3.0.0'
+      version: '2.0.0'
     },
     theme: { mode: 'dark', accent: 'blue', animasi: true },
     // Password TIDAK disimpan polos — disimpan sebagai hash SHA-256 (lihat AUTHENTICATION).
@@ -1944,19 +1992,54 @@ function applyParsedConfig(parsed) {
   CONFIG.mapping = Object.assign(defaultConfig().mapping, parsed.mapping||{});
   CONFIG.about = Object.assign(defaultConfig().about, parsed.about||{});
   CONFIG.jadwal = Object.assign(defaultConfig().jadwal, parsed.jadwal||{});
-  CONFIG.configVersion = 3;
+  CONFIG.configVersion = 4;
+  purgeOldSpreadsheetSources();
+}
+/* Migrasi V2 — memutus paksa koneksi ke Spreadsheet LAMA (OLD_SHEET_IDS) apabila
+   masih tersimpan di localStorage browser pengguna dari versi sebelumnya.
+   Sumber yang mengarah ke ID lama akan DINONAKTIFKAN (bukan dihapus, agar riwayat
+   konfigurasi tidak hilang secara diam-diam) dan diganti sebagai sumber aktif
+   dengan Spreadsheet baru (DEFAULT_SHEET_ID). Ini dijalankan setiap kali config
+   dimuat sehingga config lama tidak pernah bisa "mengembalikan" Spreadsheet lama. */
+function purgeOldSpreadsheetSources() {
+  if (!CONFIG.sheets || !Array.isArray(CONFIG.sheets.sources)) return;
+  let touched = false;
+  CONFIG.sheets.sources.forEach(s => {
+    if (s.spreadsheetId && OLD_SHEET_IDS.includes(s.spreadsheetId)) {
+      s.status = 'nonaktif';
+      s.name = (s.name||'Sumber') + ' (LAMA — dinonaktifkan otomatis)';
+      s.lastStatus = 'nonaktif-migrasi';
+      touched = true;
+    }
+  });
+  const hasNewDefault = CONFIG.sheets.sources.some(s => s.spreadsheetId === DEFAULT_SHEET_ID);
+  if (!hasNewDefault) {
+    CONFIG.sheets.sources.unshift({
+      id: 'src-default', name: 'Data Pemeliharaan / SPJ (Bawaan)',
+      url: `https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`,
+      spreadsheetId: DEFAULT_SHEET_ID, sheetTab: 'Sheet1', jenis: 'Data Pemeliharaan',
+      status: 'aktif', lastStatus: 'unknown'
+    });
+    touched = true;
+  }
+  const activeSrc = CONFIG.sheets.sources.find(s => s.id === CONFIG.sheets.activeSpreadsheet);
+  if (!activeSrc || activeSrc.status === 'nonaktif' || (activeSrc.spreadsheetId && OLD_SHEET_IDS.includes(activeSrc.spreadsheetId))) {
+    const fallback = CONFIG.sheets.sources.find(s => s.spreadsheetId === DEFAULT_SHEET_ID && s.status !== 'nonaktif') || CONFIG.sheets.sources.find(s => s.status !== 'nonaktif');
+    if (fallback) { CONFIG.sheets.activeSpreadsheet = fallback.id; touched = true; }
+  }
+  if (touched) console.info('Migrasi V2: koneksi ke Spreadsheet lama diputus, sumber aktif diarahkan ke Spreadsheet baru.');
 }
 function loadConfigFromStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) { applyParsedConfig(JSON.parse(raw)); return true; }
-    // Tidak ada konfigurasi V3 — coba migrasi dari versi lama agar tidak ada data yang hilang
+    // Tidak ada konfigurasi V4 — coba migrasi dari versi lama agar tidak ada data yang hilang
     for (const legacyKey of LS_KEY_LEGACY) {
       const legacyRaw = localStorage.getItem(legacyKey);
       if (legacyRaw) {
-        applyParsedConfig(JSON.parse(legacyRaw));
-        saveConfig(); // simpan langsung sebagai konfigurasi V3
-        console.info('Konfigurasi berhasil dimigrasikan dari ' + legacyKey + ' ke ' + LS_KEY);
+        applyParsedConfig(JSON.parse(legacyRaw)); // purgeOldSpreadsheetSources() sudah dipanggil di dalam applyParsedConfig
+        saveConfig(); // simpan langsung sebagai konfigurasi V4 (localStorage lama TIDAK dihapus, hanya tidak dipakai lagi)
+        console.info('Konfigurasi berhasil dimigrasikan dari ' + legacyKey + ' ke ' + LS_KEY + ' — Spreadsheet lama diputus.');
         return true;
       }
     }
@@ -1987,6 +2070,7 @@ async function ensureDefaultPasswords() {
 function enterApp(role) {
   SESSION.role = role;
   SESSION.loginAt = Date.now();
+  registerSession(role);
   document.body.classList.remove('locked');
   document.body.classList.toggle('role-admin', role === 'admin');
   document.getElementById('startScreen').classList.add('hidden');
@@ -2001,8 +2085,10 @@ function enterApp(role) {
   startAutoRefresh();
 }
 
-function appLogout() {
-  SESSION.role = null;
+function appLogout(kicked) {
+  if (SESSION.role) logAudit(kicked ? (SESSION.role==='admin'?'Admin Di-kick':'Publik Di-kick') : (SESSION.role === 'admin' ? 'Admin Logout' : 'Publik Logout'), SESSION.id||'');
+  endSession(SESSION.id);
+  SESSION.role = null; SESSION.id = null;
   document.body.classList.add('locked');
   document.body.classList.remove('role-admin');
   document.getElementById('startScreen').classList.remove('hidden');
@@ -2010,12 +2096,140 @@ function appLogout() {
   resetWheel();
   showPage('overview');
   stopAutoRefresh();
-  toast('Anda telah keluar.', 'ok');
+  stopSessionHeartbeat();
+  if (!kicked) toast('Anda telah keluar.', 'ok');
+}
+
+/* ════════════════════════════════════════════════
+   MONITORING SESI PENGGUNA & AUDIT LOG
+   Catatan arsitektur: mekanisme ini berbasis localStorage per-browser
+   (dashboard ini murni file HTML statis tanpa backend), sehingga HANYA
+   dapat melihat/mengakhiri sesi yang dibuka pada BROWSER YANG SAMA.
+   Untuk monitoring lintas perangkat/browser sungguhan, mekanisme ini perlu
+   diganti dengan penyimpanan sesi terpusat di server — struktur data di
+   bawah ini (id, role, loginAt, lastActive, device) sudah disiapkan agar
+   mudah dipindahkan ke backend tanpa mengubah data operasional Spreadsheet.
+═══════════════════════════════════════════════ */
+const SESS_KEY = 'boasPembusSessionsV2';
+const AUDIT_KEY = 'boasPembusAuditLogV2';
+let sessionHeartbeatTimer = null;
+
+function readSessions() { try { return JSON.parse(localStorage.getItem(SESS_KEY)||'{}'); } catch(e) { return {}; } }
+function writeSessions(obj) { try { localStorage.setItem(SESS_KEY, JSON.stringify(obj)); } catch(e){} }
+function deviceLabel() {
+  const ua = navigator.userAgent||'';
+  const os = /Windows/.test(ua)?'Windows':/Android/.test(ua)?'Android':/iPhone|iPad/.test(ua)?'iOS':/Mac/.test(ua)?'Mac':'Perangkat';
+  const br = /Edg/.test(ua)?'Edge':/Chrome/.test(ua)?'Chrome':/Firefox/.test(ua)?'Firefox':/Safari/.test(ua)?'Safari':'Browser';
+  return os + ' · ' + br;
+}
+function registerSession(role) {
+  const id = 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  const sessions = readSessions();
+  sessions[id] = { id, role, loginAt: Date.now(), lastActive: Date.now(), device: deviceLabel() };
+  writeSessions(sessions);
+  SESSION.id = id;
+  logAudit(role === 'admin' ? 'Admin Login' : 'Publik Login', id);
+  startSessionHeartbeat();
+  return id;
+}
+function endSession(id) {
+  if (!id) return;
+  const sessions = readSessions();
+  if (sessions[id]) { delete sessions[id]; writeSessions(sessions); }
+}
+function startSessionHeartbeat() {
+  stopSessionHeartbeat();
+  sessionHeartbeatTimer = setInterval(() => {
+    if (!SESSION.id) return;
+    const sessions = readSessions();
+    if (!sessions[SESSION.id]) {
+      // Sesi ini sudah diakhiri (kick) oleh Admin di panel Monitoring Sesi
+      toast('Sesi Anda telah diakhiri oleh Admin.', 'err');
+      appLogout(true);
+      return;
+    }
+    sessions[SESSION.id].lastActive = Date.now();
+    writeSessions(sessions);
+    if (CURRENT_PAGE === 'settings') renderSessionList();
+  }, 15000);
+}
+function stopSessionHeartbeat() { if (sessionHeartbeatTimer) clearInterval(sessionHeartbeatTimer); sessionHeartbeatTimer = null; }
+function kickSession(id) {
+  if (!isAdmin()) return;
+  if (id === SESSION.id) { toast('Tidak dapat mengakhiri sesi Anda sendiri dari sini. Gunakan tombol Logout.', 'warn'); return; }
+  if (!confirm('Akhiri sesi ini? Pengguna terkait akan otomatis keluar dari dashboard.')) return;
+  endSession(id);
+  logAudit('Kick Session', id);
+  renderSessionList();
+  toast('Sesi diakhiri.', 'ok');
+}
+function fmtDuration(ms) {
+  const m = Math.floor(ms/60000);
+  if (m < 1) return '<1 menit';
+  if (m < 60) return m + ' menit';
+  return Math.floor(m/60) + ' jam ' + (m%60) + ' menit';
+}
+function renderSessionList() {
+  if (!isAdmin()) return;
+  const el = document.getElementById('sessionList');
+  if (!el) return;
+  const sessions = Object.values(readSessions()).sort((a,b)=>b.lastActive-a.lastActive);
+  if (!sessions.length) { el.innerHTML = `<div class="empty-state">Tidak ada sesi aktif tercatat di browser ini.</div>`; return; }
+  const now = Date.now();
+  el.innerHTML = `<div class="data-table-wrap"><table class="data-table"><thead><tr>
+    <th>Peran</th><th>Waktu Login</th><th>Aktivitas Terakhir</th><th>Durasi</th><th>Perangkat</th><th>Status</th><th>Aksi</th>
+  </tr></thead><tbody>${sessions.map(s => {
+    const idle = now - s.lastActive;
+    const status = idle > 90000 ? '<span class="status-chip tidak-aktif">Idle</span>' : '<span class="status-chip aktif">Aktif</span>';
+    const isMe = s.id === SESSION.id;
+    return `<tr>
+      <td><span class="status-chip ${s.role==='admin'?'perawatan':'aktif'}">${s.role==='admin'?'ADMIN':'PUBLIK'}</span>${isMe?' <span style="font-size:10px;color:var(--text3)">(sesi ini)</span>':''}</td>
+      <td>${new Date(s.loginAt).toLocaleString('id-ID')}</td>
+      <td>${new Date(s.lastActive).toLocaleTimeString('id-ID')}</td>
+      <td>${fmtDuration(now - s.loginAt)}</td>
+      <td style="font-family:var(--mono);font-size:11px">${escapeHtml(s.device)}</td>
+      <td>${status}</td>
+      <td class="actions">${isMe?'—':`<button class="btn-sm danger" onclick="kickSession('${s.id}')">Akhiri Sesi</button>`}</td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function readAuditLog() { try { return JSON.parse(localStorage.getItem(AUDIT_KEY)||'[]'); } catch(e) { return []; } }
+function logAudit(event, detail) {
+  try {
+    const log = readAuditLog();
+    log.unshift({ ts: Date.now(), event, detail: detail||'', role: SESSION.role||'-' });
+    while (log.length > 500) log.pop();
+    localStorage.setItem(AUDIT_KEY, JSON.stringify(log));
+  } catch(e) { console.warn('Gagal menulis audit log', e); }
+}
+function clearAuditLog() {
+  if (!isAdmin()) return;
+  if (!confirm('Bersihkan seluruh Audit Log pada browser ini?')) return;
+  localStorage.removeItem(AUDIT_KEY);
+  logAudit('Audit Log Dibersihkan', '');
+  renderAuditLogList();
+  toast('Audit Log dibersihkan.', 'ok');
+}
+function renderAuditLogList() {
+  if (!isAdmin()) return;
+  const el = document.getElementById('auditLogList');
+  if (!el) return;
+  const log = readAuditLog();
+  if (!log.length) { el.innerHTML = `<div class="empty-state">Belum ada aktivitas tercatat.</div>`; return; }
+  el.innerHTML = `<div class="data-table-wrap" style="max-height:420px;overflow-y:auto"><table class="data-table"><thead><tr>
+    <th>Waktu</th><th>Aktivitas</th><th>Peran</th><th>Keterangan</th>
+  </tr></thead><tbody>${log.slice(0,200).map(l => `<tr>
+    <td style="font-family:var(--mono);font-size:11px">${new Date(l.ts).toLocaleString('id-ID')}</td>
+    <td>${escapeHtml(l.event)}</td>
+    <td>${l.role==='admin'?'ADMIN':l.role==='guest'?'PUBLIK':'—'}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${escapeHtml(String(l.detail||''))}</td>
+  </tr>`).join('')}</tbody></table></div>`;
 }
 
 /* ════════════════════════════════════════════════
    DATA LENGKAP — DARI GOOGLE SHEETS
-   Sheet ID: 1dxajA2HLkiJKWVixcIbQI50B1CVUa4DHktJModqxb6w
+   Sheet ID: dikonfigurasi via Pengaturan Sistem → Sumber Data (lihat CONFIG.sheets)
    Diperbarui: otomatis via Google Sheets GViz API
 ═══════════════════════════════════════════════ */
 
@@ -2773,7 +2987,7 @@ let chartBulan, chartKomposisi, chartTopKendaraan, chartAnggaranBulan;
 
 /* ════════════════════════════════════════════════
    REAL-TIME GOOGLE SHEETS INTEGRATION
-   Sheet: 1dxajA2HLkiJKWVixcIbQI50B1CVUa4DHktJModqxb6w
+   Sheet: dikonfigurasi via Pengaturan Sistem → Sumber Data (lihat CONFIG.sheets)
    Menggunakan Google Visualization API (GViz/tq)
    Fallback: EMBEDDED_DATA jika sheet tidak dapat diakses
 ═══════════════════════════════════════════════ */
@@ -3104,6 +3318,91 @@ function parseCSVRows(csvRows) {
     if (!r.total) r.total = r.sc + r.pel + r.jasa;
     return r;
   }).filter(r => r.tnkb && (r.total > 0 || r.items_sc.length > 0));
+}
+
+/* ════════════════════════════════════════════════
+   SINKRONISASI DATA ARMADA & SOPIR DARI TAB "Profile Kendaraan"
+   Tab ini berisi data kendaraan/sopir asli (Kecamatan, Merk, Tipe, Rute,
+   KM, BBM) yang selama ini hanya bisa diisi manual di Data Armada/Sopir.
+   Kolom (0-based): 0=No,1=Kecamatan,2=Nama Sopir,3=Plat Kendaraan(TNKB),
+   4=Tahun Pengadaan,5=Merk,6=Type,7=No. Mesin,8=Jarak Tempuh (KM),
+   9=Rute Pagi,11=Rute Siang,13=BBM/minggu (Liter),14=Ket.
+═══════════════════════════════════════════════ */
+function parseProfileRows(rows, source) {
+  const cv = source === 'gviz'
+    ? (c, row) => { const cell = row.c && row.c[c]; if (!cell) return ''; return cell.v !== null && cell.v !== undefined ? cell.v : (cell.f || ''); }
+    : (c, row) => row[c] !== undefined ? row[c] : '';
+
+  const out = [];
+  rows.forEach(row => {
+    const tnkb = String(cv(3, row)).trim();
+    if (!tnkb || tnkb.toLowerCase().includes('plat kendaraan')) return;
+    const noStr = String(cv(0, row)).trim();
+    if (!noStr || isNaN(parseFloat(noStr))) return; // baris bukan data kendaraan (header/kosong)
+    out.push({
+      kecamatan: String(cv(1, row)).trim(),
+      sopir:     String(cv(2, row)).trim(),
+      tnkb,
+      tahun:     String(cv(4, row)).trim(),
+      merk:      String(cv(5, row)).trim(),
+      type:      String(cv(6, row)).trim(),
+      noMesin:   String(cv(7, row)).trim(),
+      km:        parseInt(String(cv(8, row)).replace(/[^\d]/g,'')) || 0,
+      rutePagi:  String(cv(9, row)).trim(),
+      ruteSiang: String(cv(11, row)).trim(),
+      bbm:       parseInt(String(cv(13, row)).replace(/[^\d]/g,'')) || 0,
+      ket:       String(cv(14, row)).trim(),
+    });
+  });
+  return out;
+}
+async function fetchProfileKendaraan() {
+  const sheetName = 'Profile Kendaraan';
+  try {
+    const { rows } = await fetchGViz(sheetName);
+    return parseProfileRows(rows, 'gviz');
+  } catch (e) {
+    console.warn('GViz gagal untuk Profile Kendaraan:', e.message);
+    throw new Error('Tidak dapat membaca tab "Profile Kendaraan". Pastikan nama tab persis sama dan spreadsheet dapat diakses publik.');
+  }
+}
+async function syncArmadaSopirFromSheets() {
+  if (!isAdmin()) return;
+  toast('Menyinkronkan data Armada & Sopir dari Sheets…');
+  let profile;
+  try { profile = await fetchProfileKendaraan(); }
+  catch (e) { toast(e.message, 'err'); return; }
+  if (!profile.length) { toast('Tidak ada baris kendaraan yang terbaca dari tab Profile Kendaraan.', 'warn'); return; }
+
+  let armadaAdded = 0, armadaUpdated = 0, sopirAdded = 0, sopirUpdated = 0;
+  profile.forEach(p => {
+    const key = p.tnkb.trim().toUpperCase();
+    // Upsert Armada
+    let a = CONFIG.armada.find(x => (x.tnkb||'').trim().toUpperCase() === key);
+    const ruteGabungan = [p.rutePagi, p.ruteSiang].filter(Boolean).join(' | ');
+    if (a) {
+      Object.assign(a, { merek: p.merk||a.merek, tipe: p.type||a.tipe, tahun: p.tahun||a.tahun,
+        wilayah: p.kecamatan||a.wilayah, sopir: p.sopir||a.sopir, rute: ruteGabungan||a.rute,
+        km: p.km||a.km, bbm: (p.bbm?('Solar · '+p.bbm+' L/minggu'):a.bbm) });
+      armadaUpdated++;
+    } else {
+      CONFIG.armada.push({ id:'arm-'+Date.now()+'-'+armadaAdded, tnkb:p.tnkb, nama:'Bus Sekolah '+p.tnkb,
+        merek:p.merk, tipe:p.type, tahun:p.tahun, lambung:p.noMesin, wilayah:p.kecamatan, sopir:p.sopir,
+        operator:'', rute:ruteGabungan, status:'Aktif', km:p.km, kapasitas:'', bbm: p.bbm?('Solar · '+p.bbm+' L/minggu'):'Solar', ket:p.ket });
+      armadaAdded++;
+    }
+    // Upsert Sopir (satu sopir per TNKB pada data ini)
+    if (p.sopir) {
+      let s = CONFIG.sopir.find(x => (x.tnkb||'').trim().toUpperCase() === key);
+      if (s) { Object.assign(s, { nama:p.sopir, wilayah:p.kecamatan||s.wilayah, rute:ruteGabungan||s.rute }); sopirUpdated++; }
+      else { CONFIG.sopir.push({ id:'sop-'+Date.now()+'-'+sopirAdded, nama:p.sopir, tnkb:p.tnkb, jabatan:'Sopir',
+        wilayah:p.kecamatan, rute:ruteGabungan, status:'Aktif', kontak:'', ket:p.ket }); sopirAdded++; }
+    }
+  });
+  saveConfig();
+  safeCall(renderArmadaStats,'renderArmadaStats'); safeCall(renderArmadaTable,'renderArmadaTable');
+  safeCall(renderSopirTable,'renderSopirTable');
+  toast(`Sinkron selesai — Armada: +${armadaAdded} baru / ${armadaUpdated} diperbarui. Sopir: +${sopirAdded} baru / ${sopirUpdated} diperbarui.`);
 }
 
 async function fetchSheetData(sheetName) {
@@ -4319,7 +4618,7 @@ function applyThemeMode() {
 }
 function setThemeMode(mode) {
   if (!isAdmin()) return;
-  CONFIG.theme.mode = mode; saveConfig(); applyThemeMode(); toast('Tema diubah ke ' + mode);
+  CONFIG.theme.mode = mode; saveConfig(); applyThemeMode(); logAudit('Perubahan Tema', mode); toast('Tema diubah ke ' + mode);
 }
 function toggleAnimasi(v) { if (!isAdmin()) return; CONFIG.theme.animasi = v; saveConfig(); applyThemeMode(); }
 
@@ -4358,6 +4657,12 @@ function stopAutoRefresh() { if (refreshTimer) clearInterval(refreshTimer); refr
     const speedArc = document.getElementById('ssSpeedArc');
     speedArc.style.strokeDashoffset = idx>=3 ? 40 : 251;
     document.getElementById('ssSpeedVal').textContent = idx>=3 ? '42' : '0';
+    // Indikator dekoratif FUEL/OIL/TEMP/BRAKE/ENGINE — mengikuti tahap kontak, sekadar hiasan (0-100%)
+    const decorSteps = { Fuel:[8,72,72,78], Oil:[5,5,64,70], Temp:[3,3,38,55], Brake:[10,10,10,92], Engine:[0,20,55,88] };
+    Object.entries({ Fuel:'dashBarFuel', Oil:'dashBarOil', Temp:'dashBarTemp', Brake:'dashBarBrake', Engine:'dashBarEngine' }).forEach(([k, elId]) => {
+      const el = document.getElementById(elId);
+      if (el) el.style.width = decorSteps[k][idx] + '%';
+    });
     if (idx === POS.length-1) {
       guestBtn.classList.add('ready');
     } else {
@@ -4533,6 +4838,7 @@ async function testSourceConnection(id) {
 function setActiveSource(id) {
   if (!isAdmin()) return;
   CONFIG.sheets.activeSpreadsheet = id; saveConfig(); renderSourceList();
+  logAudit('Perubahan Spreadsheet Aktif', id);
   toast('Sumber data aktif diperbarui.'); loadData();
 }
 function deleteSource(id) {
@@ -4573,7 +4879,7 @@ function openSourceModal(id) {
     };
     if (src) Object.assign(src, data);
     else CONFIG.sheets.sources.push(data);
-    saveConfig(); renderSourceList(); toast('Sumber data disimpan.');
+    saveConfig(); renderSourceList(); logAudit('Perubahan Sumber Data', data.name+' ('+data.spreadsheetId+')'); toast('Sumber data disimpan.');
     return true;
   });
 }
@@ -4593,7 +4899,7 @@ function saveMapping() {
   document.querySelectorAll('#mappingList input[data-map-field]').forEach(inp => {
     CONFIG.mapping[inp.dataset.mapField] = inp.value;
   });
-  saveConfig(); toast('Pemetaan kolom disimpan.');
+  saveConfig(); logAudit('Perubahan Mapping', ''); toast('Pemetaan kolom disimpan.');
 }
 
 /* ── Menu toggles ── */
@@ -4642,6 +4948,8 @@ function renderSettingsPage() {
   renderSourceList();
   renderMappingList();
   renderMenuToggleList();
+  renderSessionList();
+  renderAuditLogList();
   applyThemeMode();
 }
 function saveUmumSettings() {
@@ -4722,7 +5030,7 @@ function resetConfigConfirm() {
   if (!confirm('Reset seluruh pengaturan ke kondisi awal? Tindakan ini tidak dapat dibatalkan.')) return;
   localStorage.removeItem(LS_KEY);
   CONFIG = defaultConfig();
-  ensureDefaultPasswords().then(() => { saveConfig(); seedDataIfEmpty(); applyBrandingToUI(); applyThemeMode(); applyMenuVisibility(); renderSettingsPage(); toast('Konfigurasi direset ke pengaturan awal.'); });
+  ensureDefaultPasswords().then(() => { saveConfig(); seedDataIfEmpty(); applyBrandingToUI(); applyThemeMode(); applyMenuVisibility(); logAudit('Reset Konfigurasi', ''); renderSettingsPage(); toast('Konfigurasi direset ke pengaturan awal.'); });
 }
 
 /* ════════════════════════════════════════════════
@@ -4837,11 +5145,33 @@ function renderArmadaStats() {
   const aktif = list.filter(a=>a.status==='Aktif').length;
   const perawatan = list.filter(a=>a.status==='Dalam Perawatan').length;
   const nonaktif = list.filter(a=>a.status==='Tidak Aktif').length;
+  const scores = list.map(a=>fleetHealthScoreOf(a.tnkb)).filter(s=>s!==null);
+  const avgScore = scores.length ? Math.round(scores.reduce((s,v)=>s+v,0)/scores.length) : null;
   document.getElementById('armadaStats').innerHTML = `
     <div class="stat-card"><div class="n">${total}</div><div class="l">Total Armada</div></div>
     <div class="stat-card"><div class="n" style="color:var(--accent4)">${aktif}</div><div class="l">Armada Aktif</div></div>
     <div class="stat-card"><div class="n" style="color:var(--accent3)">${perawatan}</div><div class="l">Dalam Perawatan</div></div>
-    <div class="stat-card"><div class="n" style="color:var(--danger)">${nonaktif}</div><div class="l">Tidak Aktif</div></div>`;
+    <div class="stat-card"><div class="n" style="color:var(--danger)">${nonaktif}</div><div class="l">Tidak Aktif</div></div>
+    <div class="stat-card"><div class="n" style="color:${avgScore===null?'var(--text3)':fleetScoreColor(avgScore)}">${avgScore===null?'—':avgScore}</div><div class="l">Rata-rata Fleet Health Score</div></div>`;
+}
+/* ── Fleet Health Score ──
+   Dihitung HANYA dari data yang tersedia: status operasional armada +
+   kategori Vehicle Health (yang punya data, bukan "Tidak Ada Data").
+   Mengembalikan null ("—") jika sama sekali tidak ada data pendukung — tidak pernah menebak. */
+function fleetHealthScoreOf(tnkb) {
+  const a = (CONFIG.armada||[]).find(x=>x.tnkb===tnkb);
+  const statusPoin = { 'Aktif':100, 'Cadangan':75, 'Dalam Perawatan':50, 'Rusak':15, 'Tidak Aktif':30 };
+  const parts = [];
+  if (a && a.status && statusPoin[a.status] !== undefined) parts.push(statusPoin[a.status]);
+  const health = vehicleHealthOf(tnkb).filter(h => h.status !== 'tidak-ada-data');
+  health.forEach(h => parts.push(h.status === 'normal' ? 100 : 40));
+  if (!parts.length) return null;
+  return Math.round(parts.reduce((s,v)=>s+v,0) / parts.length);
+}
+function fleetScoreColor(score) {
+  if (score >= 80) return 'var(--accent4)';
+  if (score >= 55) return 'var(--accent3)';
+  return 'var(--danger)';
 }
 function statusChipClass(s) {
   const m = { 'Aktif':'aktif', 'Tidak Aktif':'tidak-aktif', 'Dalam Perawatan':'perawatan', 'Rusak':'rusak', 'Cadangan':'cadangan',
@@ -4856,17 +5186,18 @@ function renderArmadaTable() {
     (!q || [a.tnkb,a.nama,a.sopir,a.rute,a.wilayah].join(' ').toLowerCase().includes(q))
   );
   const tbl = document.getElementById('armadaTable');
-  const head = `<thead><tr><th>No</th><th>TNKB</th><th>Nama Armada</th><th>Merek/Tipe</th><th>Th.</th><th>No. Lambung</th><th>Wilayah</th><th>Sopir</th><th>Rute</th><th>Status</th><th>KM</th><th>Kapasitas</th><th>BBM</th><th>Detail</th>${isAdmin()?'<th>Aksi</th>':''}</tr></thead>`;
-  if (!rows.length) { tbl.innerHTML = head + `<tbody><tr><td colspan="15"><div class="empty-state">Tidak ada data armada.</div></td></tr></tbody>`; return; }
-  tbl.innerHTML = head + '<tbody>' + rows.map((a,i)=>`<tr>
+  const head = `<thead><tr><th>No</th><th>TNKB</th><th>Nama Armada</th><th>Merek/Tipe</th><th>Th.</th><th>No. Lambung</th><th>Wilayah</th><th>Sopir</th><th>Rute</th><th>Status</th><th>KM</th><th>Kapasitas</th><th>BBM</th><th>Fleet Health</th><th>Detail</th>${isAdmin()?'<th>Aksi</th>':''}</tr></thead>`;
+  if (!rows.length) { tbl.innerHTML = head + `<tbody><tr><td colspan="16"><div class="empty-state">Tidak ada data armada.</div></td></tr></tbody>`; return; }
+  tbl.innerHTML = head + '<tbody>' + rows.map((a,i)=>{ const score = fleetHealthScoreOf(a.tnkb); return `<tr>
     <td>${i+1}</td><td style="font-family:var(--mono)">${escapeHtml(a.tnkb)}</td><td>${escapeHtml(a.nama)}</td>
     <td>${escapeHtml(a.merek)} / ${escapeHtml(a.tipe)}</td><td>${escapeHtml(a.tahun)}</td><td>${escapeHtml(a.lambung)}</td>
     <td>${escapeHtml(a.wilayah)}</td><td>${escapeHtml(a.sopir)}</td><td>${escapeHtml(a.rute)}</td>
     <td><span class="status-chip ${statusChipClass(a.status)}">${escapeHtml(a.status)}</span></td>
     <td>${(a.km||0).toLocaleString('id-ID')}</td><td>${escapeHtml(a.kapasitas)}</td><td>${escapeHtml(a.bbm)}</td>
+    <td style="font-family:var(--mono);font-weight:700;color:${score===null?'var(--text3)':fleetScoreColor(score)}">${score===null?'—':score}</td>
     <td class="actions"><button class="btn-sm" onclick="openArmadaDetail('${a.tnkb}')">Lihat</button></td>
     ${isAdmin() ? `<td class="actions"><button class="btn-sm" onclick="openArmadaModal('${a.id}')">Edit</button><button class="btn-sm danger" onclick="deleteArmada('${a.id}')">Hapus</button></td>` : ''}
-  </tr>`).join('') + '</tbody>';
+  </tr>`; }).join('') + '</tbody>';
 }
 function openArmadaModal(id) {
   if (!isAdmin()) return;
@@ -4961,6 +5292,7 @@ function openArmadaDetail(tnkb) {
       <div class="form-field"><label>Sopir / Operator</label><div>${escapeHtml(a.sopir||'—')} / ${escapeHtml(a.operator||'—')}</div></div>
       <div class="form-field"><label>Status</label><div><span class="status-chip ${statusChipClass(a.status)}">${escapeHtml(a.status||'—')}</span></div></div>
       <div class="form-field"><label>Total Biaya Tercatat</label><div style="font-family:var(--mono);color:var(--accent3);font-weight:700">${rpFull(totalBiaya)}</div></div>
+      <div class="form-field"><label>Fleet Health Score</label><div style="font-family:var(--mono);font-weight:700;font-size:16px;color:${fleetHealthScoreOf(tnkb)===null?'var(--text3)':fleetScoreColor(fleetHealthScoreOf(tnkb))}">${fleetHealthScoreOf(tnkb)===null?'— (Data belum tersedia)':fleetHealthScoreOf(tnkb)+' / 100'}</div></div>
     </div>
     <div class="card-title" style="margin-bottom:6px">Vehicle Health</div>
     <div class="jadwal-grid" style="padding:0 0 14px">${healthHtml}</div>
