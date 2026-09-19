@@ -1799,10 +1799,9 @@
 
     <div class="settings-pane" id="settings-sumberdata">
       <div class="card" style="max-width:760px">
-        <div class="settings-section-title">Sumber Google Sheets</div>
-        <p style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Tempel URL folder/spreadsheet Google Sheets — Spreadsheet ID diambil otomatis. Setiap sumber dapat diarahkan ke satu jenis data.</p>
+        <div class="settings-section-title">Sumber Google Sheets 🔒 Terkunci</div>
+        <p style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Dashboard ini dikunci hanya pada satu Google Spreadsheet berikut secara real-time. Menambah, mengedit, atau berpindah ke spreadsheet lain dinonaktifkan.</p>
         <div id="sourceList"></div>
-        <button class="btn-sm primary" onclick="openSourceModal()">+ Tambah Sumber Data</button>
       </div>
     </div>
 
@@ -1827,11 +1826,14 @@
         <div class="settings-section-title">Interval Auto-Refresh</div>
         <select id="cfgRefreshInterval" style="width:100%;padding:9px 12px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text)">
           <option value="0">Manual</option>
+          <option value="15000">15 detik (real-time)</option>
+          <option value="30000">30 detik (real-time)</option>
           <option value="60000">1 menit</option>
           <option value="300000">5 menit</option>
           <option value="600000">10 menit</option>
           <option value="1800000">30 menit</option>
         </select>
+        <p style="font-size:11px;color:var(--text3);margin-top:8px">Dashboard juga otomatis menyegarkan data setiap kali tab ini dibuka/difokuskan kembali, agar tetap real-time walau interval di atas panjang.</p>
         <div class="btn-row" style="margin-top:14px;max-width:220px"><button class="btn-primary" onclick="saveRefreshInterval()">Simpan</button></div>
       </div>
     </div>
@@ -1951,7 +1953,7 @@ function defaultConfig() {
         { id:'src-default', name:'Data Pemeliharaan / SPJ (Bawaan)', url:`https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`, spreadsheetId: DEFAULT_SHEET_ID, sheetTab:'Sheet1', jenis:'Data Pemeliharaan', status:'aktif', lastStatus:'unknown' }
       ]
     },
-    refresh: { interval: 300000 },
+    refresh: { interval: 30000 }, // real-time: default 30 detik
     menus: { overview:true, anggaran:true, pengeluaran:true, armada:true, sopir:true, harga:true, pemeliharaan:true, ban:true, oli:true, solar:true, about:true },
     mapping: {
       TNKB:'B', Bulan:'(otomatis dari tanggal)', Tanggal:'C', 'Tanggal SP':'T', 'Tanggal BASTB':'V', 'Tanggal BAPB':'X', 'Tanggal SPMK':'Z',
@@ -2003,31 +2005,16 @@ function applyParsedConfig(parsed) {
    dimuat sehingga config lama tidak pernah bisa "mengembalikan" Spreadsheet lama. */
 function purgeOldSpreadsheetSources() {
   if (!CONFIG.sheets || !Array.isArray(CONFIG.sheets.sources)) return;
-  let touched = false;
-  CONFIG.sheets.sources.forEach(s => {
-    if (s.spreadsheetId && OLD_SHEET_IDS.includes(s.spreadsheetId)) {
-      s.status = 'nonaktif';
-      s.name = (s.name||'Sumber') + ' (LAMA — dinonaktifkan otomatis)';
-      s.lastStatus = 'nonaktif-migrasi';
-      touched = true;
-    }
-  });
-  const hasNewDefault = CONFIG.sheets.sources.some(s => s.spreadsheetId === DEFAULT_SHEET_ID);
-  if (!hasNewDefault) {
-    CONFIG.sheets.sources.unshift({
-      id: 'src-default', name: 'Data Pemeliharaan / SPJ (Bawaan)',
-      url: `https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`,
-      spreadsheetId: DEFAULT_SHEET_ID, sheetTab: 'Sheet1', jenis: 'Data Pemeliharaan',
-      status: 'aktif', lastStatus: 'unknown'
-    });
-    touched = true;
+  // ── KUNCI: dashboard ini hanya boleh terhubung ke SATU spreadsheet ──
+  // Paksa CONFIG.sheets.sources hanya berisi spreadsheet default (DEFAULT_SHEET_ID),
+  // berapa pun sumber lain yang mungkin pernah ditambahkan/tersimpan di localStorage.
+  CONFIG.sheets.sources = CONFIG.sheets.sources.filter(s => s.spreadsheetId === DEFAULT_SHEET_ID);
+  if (!CONFIG.sheets.sources.length) {
+    CONFIG.sheets.sources = [defaultConfig().sheets.sources[0]];
   }
-  const activeSrc = CONFIG.sheets.sources.find(s => s.id === CONFIG.sheets.activeSpreadsheet);
-  if (!activeSrc || activeSrc.status === 'nonaktif' || (activeSrc.spreadsheetId && OLD_SHEET_IDS.includes(activeSrc.spreadsheetId))) {
-    const fallback = CONFIG.sheets.sources.find(s => s.spreadsheetId === DEFAULT_SHEET_ID && s.status !== 'nonaktif') || CONFIG.sheets.sources.find(s => s.status !== 'nonaktif');
-    if (fallback) { CONFIG.sheets.activeSpreadsheet = fallback.id; touched = true; }
-  }
-  if (touched) console.info('Migrasi V2: koneksi ke Spreadsheet lama diputus, sumber aktif diarahkan ke Spreadsheet baru.');
+  CONFIG.sheets.sources.forEach(s => { s.status = 'aktif'; s.lastStatus = s.lastStatus || 'unknown'; });
+  CONFIG.sheets.activeSpreadsheet = CONFIG.sheets.sources[0].id;
+  console.info('Sumber data dikunci: hanya Spreadsheet ' + DEFAULT_SHEET_ID + ' yang aktif.');
 }
 function loadConfigFromStorage() {
   try {
@@ -3146,21 +3133,19 @@ function parseGVizRows(rows) {
 /* ── Strategy 1: GViz JSON API ──
    SHEET_ID sekarang dinamis: diambil dari sumber data aktif pada
    Pengaturan → Sumber Data (CONFIG.sheets), bukan hard-coded. */
+// ── KUNCI SUMBER DATA ──
+// Dashboard ini dikunci HANYA pada satu Spreadsheet (permintaan operasional):
+// https://docs.google.com/spreadsheets/d/1_7zVPevebMVV-ihPmupnArdAI0xykL2k
+// getActiveSheetId()/getActiveSheetTab() SENGAJA tidak lagi membaca sumber lain
+// dari CONFIG.sheets.sources, agar tidak ada cara (termasuk lewat localStorage lama
+// atau menu Pengaturan) untuk mengalihkan dashboard ke spreadsheet lain.
 function getActiveSheetId() {
-  try {
-    const src = (CONFIG.sheets.sources || []).find(s => s.id === CONFIG.sheets.activeSpreadsheet && s.status !== 'nonaktif');
-    if (src && src.spreadsheetId) return src.spreadsheetId;
-    const anyActive = (CONFIG.sheets.sources || []).find(s => s.status !== 'nonaktif' && s.spreadsheetId);
-    if (anyActive) return anyActive.spreadsheetId;
-  } catch(e) {}
-  return DEFAULT_SHEET_ID; // fallback bawaan versi 1.2
+  return DEFAULT_SHEET_ID;
 }
 function getActiveSheetTab() {
   try {
-    const src = (CONFIG.sheets.sources || []).find(s => s.id === CONFIG.sheets.activeSpreadsheet && s.status !== 'nonaktif');
+    const src = (CONFIG.sheets.sources || []).find(s => s.spreadsheetId === DEFAULT_SHEET_ID);
     if (src && src.sheetTab) return src.sheetTab;
-    const anyActive = (CONFIG.sheets.sources || []).find(s => s.status !== 'nonaktif' && s.sheetTab);
-    if (anyActive) return anyActive.sheetTab;
   } catch(e) {}
   return 'Sheet1';
 }
@@ -4484,7 +4469,27 @@ function renderConnBanner() {
 }
 
 
-setInterval(loadData, 5 * 60 * 1000);
+// Catatan: interval auto-refresh utama dikendalikan oleh startAutoRefresh()
+// (mengikuti CONFIG.refresh.interval, diatur di Pengaturan → Auto-Refresh).
+// Selain itu, agar terasa "real-time", data juga disegarkan otomatis setiap
+// kali tab ini kembali terlihat/fokus (mis. pengguna berpindah tab lalu kembali).
+let _lastVisRefresh = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    const now = Date.now();
+    if (now - _lastVisRefresh > 10000) { // throttle: maksimal sekali per 10 detik
+      _lastVisRefresh = now;
+      loadData();
+    }
+  }
+});
+window.addEventListener('focus', () => {
+  const now = Date.now();
+  if (now - _lastVisRefresh > 10000) {
+    _lastVisRefresh = now;
+    loadData();
+  }
+});
 
 /* ════════════════════════════════════════════════
    INIT
@@ -4588,7 +4593,15 @@ function applyBrandingToUI() {
   document.getElementById('sbTitle').innerHTML = CONFIG.app.title.replace(/ AND /,' AND<br>');
   document.getElementById('sbSub').textContent = CONFIG.app.instansi + ' · ' + CONFIG.app.year;
   const iv = document.getElementById('refreshIntervalLabel');
-  if (iv) iv.textContent = 'Auto-refresh: ' + (CONFIG.refresh.interval ? (CONFIG.refresh.interval/60000)+' menit' : 'Manual');
+  if (iv) {
+    let label = 'Manual';
+    if (CONFIG.refresh.interval) {
+      label = CONFIG.refresh.interval < 60000
+        ? (CONFIG.refresh.interval/1000) + ' detik'
+        : (CONFIG.refresh.interval/60000) + ' menit';
+    }
+    iv.textContent = 'Auto-refresh: ' + label;
+  }
 }
 function applyMenuVisibility() {
   document.querySelectorAll('.nav-item[data-menu]').forEach(item => {
@@ -4806,20 +4819,19 @@ function extractSpreadsheetId(url) {
 function renderSourceList() {
   const wrap = document.getElementById('sourceList');
   if (!wrap) return;
+  // Terkunci: hanya menampilkan satu-satunya sumber yang diizinkan (DEFAULT_SHEET_ID),
+  // dengan info real-time, tanpa opsi ganti/tambah/hapus sumber.
   wrap.innerHTML = CONFIG.sheets.sources.map(s => {
     const dotClass = s.lastStatus === 'ok' ? 'green' : s.lastStatus === 'error' ? 'red' : 'yellow';
-    const active = s.id === CONFIG.sheets.activeSpreadsheet;
     return `<div class="source-card">
       <div class="source-card-head">
-        <strong><span class="conn-dot ${dotClass}"></span>${escapeHtml(s.name)} ${active?'<span class="pill" style="margin-left:6px">Aktif</span>':''}</strong>
+        <strong><span class="conn-dot ${dotClass}"></span>${escapeHtml(s.name)} <span class="pill" style="margin-left:6px">🔒 Terkunci · Real-time</span></strong>
         <div style="display:flex;gap:6px">
           <button class="btn-sm" onclick="testSourceConnection('${s.id}')">Test Koneksi</button>
-          <button class="btn-sm" onclick="setActiveSource('${s.id}')">${active?'Aktif':'Jadikan Aktif'}</button>
-          <button class="btn-sm" onclick="openSourceModal('${s.id}')">Edit</button>
-          <button class="btn-sm danger" onclick="deleteSource('${s.id}')">Hapus</button>
         </div>
       </div>
-      <div style="font-size:11.5px;color:var(--text3);font-family:var(--mono)">ID: ${escapeHtml(s.spreadsheetId||'—')} · Tab: ${escapeHtml(s.sheetTab||'-')} · Jenis: ${escapeHtml(s.jenis||'-')} · Status: ${s.status}</div>
+      <div style="font-size:11.5px;color:var(--text3);font-family:var(--mono)">ID: ${escapeHtml(s.spreadsheetId||'—')} · Tab: ${escapeHtml(s.sheetTab||'-')} · Auto-refresh: ${CONFIG.refresh.interval ? (CONFIG.refresh.interval/1000)+' detik' : 'Manual'}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">URL: <a href="${escapeAttr(s.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${escapeHtml(s.url)}</a></div>
     </div>`;
   }).join('') || '<p style="color:var(--text3);font-size:12px">Belum ada sumber data.</p>';
 }
@@ -4835,54 +4847,11 @@ async function testSourceConnection(id) {
   } catch(e) { src.lastStatus = 'error'; toast('Koneksi gagal: ' + e.message, 'err'); }
   saveConfig(); renderSourceList();
 }
-function setActiveSource(id) {
-  if (!isAdmin()) return;
-  CONFIG.sheets.activeSpreadsheet = id; saveConfig(); renderSourceList();
-  logAudit('Perubahan Spreadsheet Aktif', id);
-  toast('Sumber data aktif diperbarui.'); loadData();
-}
-function deleteSource(id) {
-  if (!isAdmin()) return;
-  if (!confirm('Hapus sumber data ini?')) return;
-  CONFIG.sheets.sources = CONFIG.sheets.sources.filter(s=>s.id!==id);
-  if (CONFIG.sheets.activeSpreadsheet === id && CONFIG.sheets.sources[0]) CONFIG.sheets.activeSpreadsheet = CONFIG.sheets.sources[0].id;
-  saveConfig(); renderSourceList(); toast('Sumber data dihapus.');
-}
-function openSourceModal(id) {
-  if (!isAdmin()) return;
-  const src = id ? CONFIG.sheets.sources.find(s=>s.id===id) : null;
-  openModal('Sumber Data Google Sheets', `
-    <div class="form-grid">
-      <div class="form-field full"><label>Nama Sumber Data</label><input id="mSrcName" value="${escapeAttr(src?.name||'')}" placeholder="Data Armada"></div>
-      <div class="form-field full"><label>URL Google Spreadsheet (Spreadsheet ID diambil otomatis)</label><input id="mSrcUrl" value="${escapeAttr(src?.url||'')}" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
-      <div class="form-field"><label>Sheet / Tab</label><input id="mSrcTab" value="${escapeAttr(src?.sheetTab||'')}" placeholder="Sheet1"></div>
-      <div class="form-field"><label>Jenis Data</label>
-        <select id="mSrcJenis">
-          ${['Data Pemeliharaan','Data Armada','Data Harga Satuan','Data BBM','Data Operasional','Data SPJ','Lainnya'].map(j=>`<option ${src?.jenis===j?'selected':''}>${j}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-field"><label>Status</label>
-        <select id="mSrcStatus"><option value="aktif" ${src?.status==='aktif'?'selected':''}>Aktif</option><option value="nonaktif" ${src?.status==='nonaktif'?'selected':''}>Nonaktif</option></select>
-      </div>
-    </div>`, () => {
-    const url = document.getElementById('mSrcUrl').value.trim();
-    const spreadsheetId = extractSpreadsheetId(url);
-    if (!spreadsheetId) { toast('URL/ID Spreadsheet tidak valid.', 'err'); return false; }
-    const data = {
-      id: src?.id || ('src-'+Date.now()),
-      name: document.getElementById('mSrcName').value.trim() || 'Sumber Data',
-      url, spreadsheetId,
-      sheetTab: document.getElementById('mSrcTab').value.trim() || 'Sheet1',
-      jenis: document.getElementById('mSrcJenis').value,
-      status: document.getElementById('mSrcStatus').value,
-      lastStatus: 'unknown'
-    };
-    if (src) Object.assign(src, data);
-    else CONFIG.sheets.sources.push(data);
-    saveConfig(); renderSourceList(); logAudit('Perubahan Sumber Data', data.name+' ('+data.spreadsheetId+')'); toast('Sumber data disimpan.');
-    return true;
-  });
-}
+// Sumber data dikunci: ganti/tambah/hapus sumber sengaja dinonaktifkan agar
+// dashboard ini hanya pernah terhubung ke SATU Google Spreadsheet yang ditentukan.
+function setActiveSource() { toast('Sumber data dikunci — hanya satu spreadsheet yang diizinkan.', 'err'); }
+function deleteSource() { toast('Sumber data dikunci — tidak dapat dihapus.', 'err'); }
+function openSourceModal() { toast('Sumber data dikunci — tidak dapat menambah/mengedit sumber lain.', 'err'); }
 
 /* ── Struktur Data / Column Mapping ── */
 function renderMappingList() {
