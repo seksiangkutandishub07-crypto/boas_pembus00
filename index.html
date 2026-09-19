@@ -1799,9 +1799,10 @@
 
     <div class="settings-pane" id="settings-sumberdata">
       <div class="card" style="max-width:760px">
-        <div class="settings-section-title">Sumber Google Sheets 🔒 Terkunci</div>
-        <p style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Dashboard ini dikunci hanya pada satu Google Spreadsheet berikut secara real-time. Menambah, mengedit, atau berpindah ke spreadsheet lain dinonaktifkan.</p>
+        <div class="settings-section-title">Sumber Google Sheets</div>
+        <p style="font-size:11.5px;color:var(--text3);margin-bottom:12px">Tempel URL folder/spreadsheet Google Sheets — Spreadsheet ID diambil otomatis. Setiap sumber dapat diarahkan ke satu jenis data.</p>
         <div id="sourceList"></div>
+        <button class="btn-sm primary" onclick="openSourceModal()">+ Tambah Sumber Data</button>
       </div>
     </div>
 
@@ -1826,14 +1827,11 @@
         <div class="settings-section-title">Interval Auto-Refresh</div>
         <select id="cfgRefreshInterval" style="width:100%;padding:9px 12px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text)">
           <option value="0">Manual</option>
-          <option value="15000">15 detik (real-time)</option>
-          <option value="30000">30 detik (real-time)</option>
           <option value="60000">1 menit</option>
           <option value="300000">5 menit</option>
           <option value="600000">10 menit</option>
           <option value="1800000">30 menit</option>
         </select>
-        <p style="font-size:11px;color:var(--text3);margin-top:8px">Dashboard juga otomatis menyegarkan data setiap kali tab ini dibuka/difokuskan kembali, agar tetap real-time walau interval di atas panjang.</p>
         <div class="btn-row" style="margin-top:14px;max-width:220px"><button class="btn-primary" onclick="saveRefreshInterval()">Simpan</button></div>
       </div>
     </div>
@@ -1950,14 +1948,14 @@ function defaultConfig() {
     sheets: {
       activeSpreadsheet: 'src-default',
       sources: [
-        { id:'src-default', name:'Data Pemeliharaan / SPJ (Bawaan)', url:`https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`, spreadsheetId: DEFAULT_SHEET_ID, sheetTab:'Sheet1', jenis:'Data Pemeliharaan', status:'aktif', lastStatus:'unknown' }
+        { id:'src-default', name:'Rekap Pemeliharaan (Bawaan)', url:`https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`, spreadsheetId: DEFAULT_SHEET_ID, sheetTab:'Rekap Pemeliharaan', jenis:'Data Pemeliharaan', status:'aktif', lastStatus:'unknown' }
       ]
     },
-    refresh: { interval: 30000 }, // real-time: default 30 detik
+    refresh: { interval: 300000 },
     menus: { overview:true, anggaran:true, pengeluaran:true, armada:true, sopir:true, harga:true, pemeliharaan:true, ban:true, oli:true, solar:true, about:true },
     mapping: {
-      TNKB:'B', Bulan:'(otomatis dari tanggal)', Tanggal:'C', 'Tanggal SP':'T', 'Tanggal BASTB':'V', 'Tanggal BAPB':'X', 'Tanggal SPMK':'Z',
-      Vendor:'AB', 'Status Bayar':'AC', 'Suku Cadang':'D-I', Pelumas:'J-O', Jasa:'P-R', Total:'S',
+      TNKB:'B', Bulan:'(otomatis dari tanggal)', Tanggal:'S', Vendor:'T', 'Status Bayar':'U',
+      'Suku Cadang':'C-H', Pelumas:'I-N', Jasa:'O-Q', Total:'R',
       'Ban Luar':'(dari uraian)', 'Ban Dalam':'(dari uraian)', 'Lidah Ban':'(dari uraian)', Oli:'(dari uraian)',
       'Filter Oli':'(dari uraian)', 'Filter Solar Atas':'(dari uraian)', 'Filter Solar Bawah':'(dari uraian)'
     },
@@ -2005,16 +2003,40 @@ function applyParsedConfig(parsed) {
    dimuat sehingga config lama tidak pernah bisa "mengembalikan" Spreadsheet lama. */
 function purgeOldSpreadsheetSources() {
   if (!CONFIG.sheets || !Array.isArray(CONFIG.sheets.sources)) return;
-  // ── KUNCI: dashboard ini hanya boleh terhubung ke SATU spreadsheet ──
-  // Paksa CONFIG.sheets.sources hanya berisi spreadsheet default (DEFAULT_SHEET_ID),
-  // berapa pun sumber lain yang mungkin pernah ditambahkan/tersimpan di localStorage.
-  CONFIG.sheets.sources = CONFIG.sheets.sources.filter(s => s.spreadsheetId === DEFAULT_SHEET_ID);
-  if (!CONFIG.sheets.sources.length) {
-    CONFIG.sheets.sources = [defaultConfig().sheets.sources[0]];
+  let touched = false;
+  CONFIG.sheets.sources.forEach(s => {
+    if (s.spreadsheetId && OLD_SHEET_IDS.includes(s.spreadsheetId)) {
+      s.status = 'nonaktif';
+      s.name = (s.name||'Sumber') + ' (LAMA — dinonaktifkan otomatis)';
+      s.lastStatus = 'nonaktif-migrasi';
+      touched = true;
+    }
+  });
+  const hasNewDefault = CONFIG.sheets.sources.some(s => s.spreadsheetId === DEFAULT_SHEET_ID);
+  if (!hasNewDefault) {
+    CONFIG.sheets.sources.unshift({
+      id: 'src-default', name: 'Rekap Pemeliharaan (Bawaan)',
+      url: `https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}`,
+      spreadsheetId: DEFAULT_SHEET_ID, sheetTab: 'Rekap Pemeliharaan', jenis: 'Data Pemeliharaan',
+      status: 'aktif', lastStatus: 'unknown'
+    });
+    touched = true;
   }
-  CONFIG.sheets.sources.forEach(s => { s.status = 'aktif'; s.lastStatus = s.lastStatus || 'unknown'; });
-  CONFIG.sheets.activeSpreadsheet = CONFIG.sheets.sources[0].id;
-  console.info('Sumber data dikunci: hanya Spreadsheet ' + DEFAULT_SHEET_ID + ' yang aktif.');
+  // Migrasi V3 — nama tab bawaan versi lama salah ('Sheet1'); nama tab sebenarnya
+  // di spreadsheet ini adalah 'Rekap Pemeliharaan'. Perbaiki otomatis agar koneksi
+  // yang sudah tersimpan di localStorage pengguna lama tetap berfungsi.
+  CONFIG.sheets.sources.forEach(s => {
+    if (s.spreadsheetId === DEFAULT_SHEET_ID && (s.sheetTab === 'Sheet1' || !s.sheetTab)) {
+      s.sheetTab = 'Rekap Pemeliharaan';
+      touched = true;
+    }
+  });
+  const activeSrc = CONFIG.sheets.sources.find(s => s.id === CONFIG.sheets.activeSpreadsheet);
+  if (!activeSrc || activeSrc.status === 'nonaktif' || (activeSrc.spreadsheetId && OLD_SHEET_IDS.includes(activeSrc.spreadsheetId))) {
+    const fallback = CONFIG.sheets.sources.find(s => s.spreadsheetId === DEFAULT_SHEET_ID && s.status !== 'nonaktif') || CONFIG.sheets.sources.find(s => s.status !== 'nonaktif');
+    if (fallback) { CONFIG.sheets.activeSpreadsheet = fallback.id; touched = true; }
+  }
+  if (touched) console.info('Migrasi V2: koneksi ke Spreadsheet lama diputus, sumber aktif diarahkan ke Spreadsheet baru.');
 }
 function loadConfigFromStorage() {
   try {
@@ -3003,78 +3025,71 @@ function parseRp(val) {
   return parseInt(String(val).replace(/[^\d]/g,'')) || 0;
 }
 
-/* Parse raw GViz rows → SPJ records grouped per TNKB+nota */
+/* Parse raw GViz rows → SPJ records grouped per TNKB
+   Struktur asli sheet "Rekap Pemeliharaan" (dikonfirmasi dari spreadsheet sumber,
+   header 3 baris bertumpuk di baris 11-13, data mulai baris 15), kolom 0-based:
+     0  = (tidak dipakai — kolom No kosong)
+     1  = TNKB (kolom B) — HANYA terisi di baris pertama tiap kendaraan karena
+          sel Tanggal/Penyedia/Status/Total digabung (merge) ke bawah; GViz hanya
+          mengembalikan nilai pada sel kiri-atas suatu merge, sel lain kosong.
+          Baris baru per kendaraan dideteksi setiap kolom ini terisi.
+     2  = Uraian Suku Cadang (C)      3 = Volume SC (D)      4 = Satuan SC (E)
+     5  = Harga Satuan SC (F)         6 = Total SC per baris (G)
+     7  = Total SC per TNKB (H, subtotal — tidak dipakai, dihitung ulang dari item)
+     8  = Uraian Pelumas (I)          9 = Volume Pelumas (J) 10 = Satuan Pelumas (K)
+     11 = Harga Satuan Pelumas (L)    12 = Total Pelumas per baris (M)
+     13 = Total Pelumas per TNKB (N, subtotal — idem)
+     14 = Uraian Jasa (O)             15 = Harga/Total Jasa per baris (P)
+     16 = Total Jasa per TNKB (Q, subtotal — idem)
+     17 = Total Harga Per TNKB/SPJ (R) 18 = Tanggal (S)
+     19 = Penyedia/Vendor (T)          20 = Status Pembayaran (U)
+     (Tidak ada kolom Tgl SP/BASTB/BAPB/SPMK di sheet ini.) */
 function parseGVizRows(rows) {
-  /* Kolom sheet (0-based):
-     0=No, 1=TNKB, 2=Tgl Nota, 3=Uraian SC, 4=Vol SC, 5=Sat SC,
-     6=HS SC, 7=Jml SC, 8=Total SC,
-     9=Uraian Pel, 10=Vol Pel, 11=Sat Pel,
-     12=HS Pel, 13=Jml Pel, 14=Total Pel,
-     15=Uraian Jasa, 16=HS Jasa, 17=Total Jasa,
-     18=Total TNKB SPJ,
-     19=Tgl SP, 20=No SP, 21=Tgl BASTB, 22=No BASTB,
-     23=Tgl BAPB, 24=No BAPB, 25=Tgl SPMK, 26=No SPMK,
-     27=Penyedia, 28=Status Bayar
-  */
   const cv = (c, row) => {
     const cell = row.c && row.c[c];
     if (!cell) return '';
     return cell.v !== null && cell.v !== undefined ? cell.v : (cell.f || '');
   };
 
-  const records = {};  // key = "TNKB|notaIdx"
+  const records = {};  // key = "TNKB|indeksBaris" (unik walau TNKB sama muncul >1 kali)
   const order   = [];
+  let currentKey = null;
 
   rows.forEach((row, ri) => {
     if (!row.c) return;
-    const tnkb = String(cv(1, row)).trim();
-    if (!tnkb || tnkb === 'TNKB' || tnkb === 'No.') return;
+    const tnkbRaw = String(cv(1, row)).trim();
 
-    const noStr = String(cv(0, row)).trim();
-    const isNewNota = noStr && !isNaN(parseInt(noStr)) && parseInt(noStr) > 0;
-
-    // Build key: new nota starts when column 0 has a number
-    let key;
-    if (isNewNota) {
-      const notaNo = parseInt(noStr);
-      key = `${tnkb}|${notaNo}`;
-    } else {
-      // Continuation row — find last key with same TNKB
-      key = order.slice().reverse().find(k => k.startsWith(tnkb + '|')) || null;
-      if (!key) return; // orphan row, skip
-    }
-
-    if (!records[key]) {
-      order.push(key);
-      const tglRaw = cv(2, row);
-      const tgl    = parseTanggal(tglRaw ? tglRaw : cv(19, row));
-      records[key] = {
-        tnkb,
+    // Baris baru per kendaraan: kolom TNKB terisi (bukan header "TNKB" itu sendiri)
+    if (tnkbRaw && tnkbRaw.toUpperCase() !== 'TNKB') {
+      currentKey = `${tnkbRaw}|${ri}`;
+      const tgl = parseTanggal(cv(18, row));
+      const statusStr = String(cv(20, row)).toLowerCase();
+      records[currentKey] = {
+        tnkb: tnkbRaw,
         tanggal: tgl.str,
         bulan:   tgl.bulan,
-        vendor:  String(cv(20, row)).trim() || 'Tidak Diketahui',
-        bayar:   String(cv(21, row)).toLowerCase().includes('lunas') && !String(cv(21, row)).toLowerCase().includes('belum'),
+        vendor:  String(cv(19, row)).trim() || 'Tidak Diketahui',
+        bayar:   statusStr.includes('lunas') && !statusStr.includes('belum'),
         items_sc: [], items_pel: [], items_jasa: [],
         sc:0, pel:0, jasa:0, total:0,
         ban_luar:0, ban_dalam:0, lidah_ban:0,
         oli:0, filter_oli:0, f_solar_atas:0, f_solar_bawah:0,
-        _totalSpj: parseRp(cv(18, row)),
+        _totalSpj: parseRp(cv(17, row)),
       };
+      order.push(currentKey);
     }
 
-    const rec = records[key];
+    if (!currentKey) return; // baris sebelum data pertama (judul/anggaran/header)
+    const rec = records[currentKey];
 
     // Suku Cadang
-    const uraianSC = String(cv(3, row)).trim();
+    const uraianSC = String(cv(2, row)).trim();
     if (uraianSC && uraianSC !== '-') {
-      const vol  = parseFloat(String(cv(4,row)).replace(',','.')) || 1;
-      const sat  = String(cv(5,row)).trim() || 'Buah';
-      const hs   = parseRp(cv(6,row));
-      const jml  = parseRp(cv(7,row));
-      const tot  = parseRp(cv(8,row));
-      rec.items_sc.push({uraian:uraianSC, vol, sat, hs, jml});
-      if (tot > 0) rec.sc = tot; // take last cumulative total SC
-      // Count ban/filter
+      const vol  = parseFloat(String(cv(3,row)).replace(',','.')) || 1;
+      const sat  = String(cv(4,row)).trim() || 'Buah';
+      const hs   = parseRp(cv(5,row));
+      const tot  = parseRp(cv(6,row));
+      rec.items_sc.push({uraian:uraianSC, vol, sat, hs, jml:tot});
       const u = uraianSC.toLowerCase();
       if (u.includes('ban luar'))           rec.ban_luar   += Math.round(vol);
       if (u.includes('ban dalam'))          rec.ban_dalam  += Math.round(vol);
@@ -3086,42 +3101,34 @@ function parseGVizRows(rows) {
     }
 
     // Pelumas
-    const uraianPel = String(cv(9,row)).trim();
+    const uraianPel = String(cv(8,row)).trim();
     if (uraianPel && uraianPel !== '-') {
-      const vol  = parseFloat(String(cv(10,row)).replace(',','.')) || 1;
-      const sat  = String(cv(11,row)).trim() || 'Liter';
-      const hs   = parseRp(cv(12,row));
-      const jml  = parseRp(cv(13,row));
-      const tot  = parseRp(cv(14,row));
-      rec.items_pel.push({uraian:uraianPel, vol, sat, hs, jml});
-      if (tot > 0) rec.pel = tot;
+      const vol  = parseFloat(String(cv(9,row)).replace(',','.')) || 1;
+      const sat  = String(cv(10,row)).trim() || 'Liter';
+      const hs   = parseRp(cv(11,row));
+      const tot  = parseRp(cv(12,row));
+      rec.items_pel.push({uraian:uraianPel, vol, sat, hs, jml:tot});
       const u = uraianPel.toLowerCase();
       if (u.includes('oli mesin')) rec.oli += vol;
     }
 
     // Jasa
-    const uraianJasa = String(cv(15,row)).trim();
+    const uraianJasa = String(cv(14,row)).trim();
     if (uraianJasa && uraianJasa !== '-') {
-      const hs  = parseRp(cv(16,row));
-      const tot = parseRp(cv(17,row));
+      const hs = parseRp(cv(15,row));
       rec.items_jasa.push({uraian:uraianJasa, hs});
-      if (tot > 0) rec.jasa = tot;
     }
-
-    // Total per nota
-    const totSPJ = parseRp(cv(18,row));
-    if (totSPJ > 0) rec.total = totSPJ;
   });
 
-  // Finalize totals if not set by individual columns
+  // Total per kategori selalu dihitung ulang dari item baris (lebih andal
+  // daripada membaca sel subtotal H/N/Q yang posisinya tidak konsisten per TNKB)
   return order.map(k => {
     const r = records[k];
-    if (!r.sc)    r.sc   = r.items_sc.reduce((s,i)=>s+i.jml,0);
-    if (!r.pel)   r.pel  = r.items_pel.reduce((s,i)=>s+i.jml,0);
-    if (!r.jasa)  r.jasa = r.items_jasa.reduce((s,i)=>s+i.hs,0);
-    if (!r.total) r.total = r._totalSpj || (r.sc+r.pel+r.jasa);
+    r.sc   = r.items_sc.reduce((s,i)=>s+i.jml,0);
+    r.pel  = r.items_pel.reduce((s,i)=>s+i.jml,0);
+    r.jasa = r.items_jasa.reduce((s,i)=>s+i.hs,0);
+    r.total = r._totalSpj || (r.sc+r.pel+r.jasa);
     if (!r.bulan) {
-      // derive bulan from tanggal string
       const found = BULAN_IDX.find(b=>b&&r.tanggal.toLowerCase().includes(b.toLowerCase()));
       r.bulan = found || 'Januari';
     }
@@ -3133,26 +3140,28 @@ function parseGVizRows(rows) {
 /* ── Strategy 1: GViz JSON API ──
    SHEET_ID sekarang dinamis: diambil dari sumber data aktif pada
    Pengaturan → Sumber Data (CONFIG.sheets), bukan hard-coded. */
-// ── KUNCI SUMBER DATA ──
-// Dashboard ini dikunci HANYA pada satu Spreadsheet (permintaan operasional):
-// https://docs.google.com/spreadsheets/d/1_7zVPevebMVV-ihPmupnArdAI0xykL2k
-// getActiveSheetId()/getActiveSheetTab() SENGAJA tidak lagi membaca sumber lain
-// dari CONFIG.sheets.sources, agar tidak ada cara (termasuk lewat localStorage lama
-// atau menu Pengaturan) untuk mengalihkan dashboard ke spreadsheet lain.
 function getActiveSheetId() {
-  return DEFAULT_SHEET_ID;
+  try {
+    const src = (CONFIG.sheets.sources || []).find(s => s.id === CONFIG.sheets.activeSpreadsheet && s.status !== 'nonaktif');
+    if (src && src.spreadsheetId) return src.spreadsheetId;
+    const anyActive = (CONFIG.sheets.sources || []).find(s => s.status !== 'nonaktif' && s.spreadsheetId);
+    if (anyActive) return anyActive.spreadsheetId;
+  } catch(e) {}
+  return DEFAULT_SHEET_ID; // fallback bawaan versi 1.2
 }
 function getActiveSheetTab() {
   try {
-    const src = (CONFIG.sheets.sources || []).find(s => s.spreadsheetId === DEFAULT_SHEET_ID);
+    const src = (CONFIG.sheets.sources || []).find(s => s.id === CONFIG.sheets.activeSpreadsheet && s.status !== 'nonaktif');
     if (src && src.sheetTab) return src.sheetTab;
+    const anyActive = (CONFIG.sheets.sources || []).find(s => s.status !== 'nonaktif' && s.sheetTab);
+    if (anyActive) return anyActive.sheetTab;
   } catch(e) {}
   return 'Sheet1';
 }
 async function fetchGViz(sheetName) {
   const SHEET_ID = getActiveSheetId();
   const encoded = encodeURIComponent(sheetName);
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encoded}&headers=3`;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encoded}`;
   const res = await fetch(url, { cache: 'no-cache', mode: 'cors' });
   if (!res.ok) throw new Error(`GViz HTTP ${res.status}`);
   const text = await res.text();
@@ -3166,7 +3175,7 @@ async function fetchGViz(sheetName) {
 
 /* ── Strategy 2: CSV Export (lebih reliable, no auth needed) ── */
 async function fetchCSV(gid) {
-  // gid=0 untuk sheet pertama, atau cari gid dari sheet name
+  // gid=0 untuk sheet pertama (Rekap Pemeliharaan), atau cari gid dari sheet name
   const SHEET_ID = getActiveSheetId();
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid || 0}`;
   const res = await fetch(url, { cache: 'no-cache', redirect: 'follow' });
@@ -3194,69 +3203,48 @@ function parseCSV(text) {
   return result;
 }
 
-/* Parse CSV rows → SPJ records (CSV dari sheet REKAP SPJ) */
+/* Parse CSV rows → SPJ records (CSV export dari sheet "Rekap Pemeliharaan").
+   Layout kolom sama persis dengan parseGVizRows (lihat komentar di atasnya),
+   hanya diakses sebagai array index karena CSV tidak punya objek sel {v,f}. */
 function parseCSVRows(csvRows) {
-  // Cari baris header dengan "TNKB"
-  let dataStart = 0;
-  for (let i = 0; i < Math.min(csvRows.length, 15); i++) {
-    if (csvRows[i].some(c => c === 'TNKB' || c.includes('Uraian Suku'))) {
-      dataStart = i + 1; break;
-    }
-  }
-
   const records = {};
   const order   = [];
+  let currentKey = null;
 
-  for (let ri = dataStart; ri < csvRows.length; ri++) {
+  for (let ri = 0; ri < csvRows.length; ri++) {
     const row = csvRows[ri];
-    if (!row || row.length < 5) continue;
+    if (!row || row.length < 3) continue;
 
-    const noStr   = String(row[0] || '').trim();
-    const tnkb    = String(row[1] || '').trim();
-    if (!tnkb || tnkb.toLowerCase() === 'tnkb') continue;
-
-    const isNewNota = noStr && /^\d+$/.test(noStr);
-    let key;
-    if (isNewNota) {
-      key = `${tnkb}|${noStr}`;
-    } else {
-      key = order.slice().reverse().find(k => k.startsWith(tnkb + '|')) || null;
-      if (!key && tnkb) {
-        key = `${tnkb}|auto${ri}`;
-      }
-      if (!key) continue;
-    }
-
-    if (!records[key]) {
-      order.push(key);
-      const tglStr = String(row[2] || '').trim() || String(row[19] || '').trim();
-      const bulan  = BULAN_IDX.find(b => b && tglStr.toLowerCase().includes(b.toLowerCase())) || 'Januari';
-      const vendor = String(row[20] || '').trim();
-      const status = String(row[21] || '').toLowerCase();
-      records[key] = {
-        tnkb, tanggal: tglStr,
-        bulan,
+    const tnkbRaw = String(row[1] || '').trim();
+    if (tnkbRaw && tnkbRaw.toUpperCase() !== 'TNKB') {
+      currentKey = `${tnkbRaw}|${ri}`;
+      const tglStr = String(row[18] || '').trim();
+      const bulan  = BULAN_IDX.find(b => b && tglStr.toLowerCase().includes(b.toLowerCase())) || '';
+      const vendor = String(row[19] || '').trim();
+      const status = String(row[20] || '').toLowerCase();
+      records[currentKey] = {
+        tnkb: tnkbRaw, tanggal: tglStr, bulan,
         vendor: vendor || 'Tidak Diketahui',
         bayar: status.includes('lunas') && !status.includes('belum'),
         items_sc: [], items_pel: [], items_jasa: [],
-        sc:0, pel:0, jasa:0, total:parseRp(row[18]),
+        sc:0, pel:0, jasa:0, total:parseRp(row[17]),
         ban_luar:0, ban_dalam:0, lidah_ban:0,
         oli:0, filter_oli:0, f_solar_atas:0, f_solar_bawah:0,
       };
+      order.push(currentKey);
     }
 
-    const rec = records[key];
+    if (!currentKey) continue;
+    const rec = records[currentKey];
 
-    // Suku Cadang (col 3-8)
-    const uSC = String(row[3]||'').trim();
+    // Suku Cadang (col 2-6)
+    const uSC = String(row[2]||'').trim();
     if (uSC && uSC !== '-') {
-      const vol = parseFloat(String(row[4]||'1').replace(',','.')) || 1;
-      const sat = String(row[5]||'Buah').trim();
-      const hs  = parseRp(row[6]);
-      const jml = parseRp(row[7]);
-      const tot = parseRp(row[8]);
-      rec.items_sc.push({uraian:uSC, vol, sat, hs, jml});
-      if (tot > 0) rec.sc = tot;
+      const vol = parseFloat(String(row[3]||'1').replace(',','.')) || 1;
+      const sat = String(row[4]||'Buah').trim();
+      const hs  = parseRp(row[5]);
+      const tot = parseRp(row[6]);
+      rec.items_sc.push({uraian:uSC, vol, sat, hs, jml:tot});
       const u = uSC.toLowerCase();
       if (u.includes('ban luar'))            rec.ban_luar   += Math.round(vol);
       if (u.includes('ban dalam'))           rec.ban_dalam  += Math.round(vol);
@@ -3268,39 +3256,35 @@ function parseCSVRows(csvRows) {
       if (u.includes('filter solar gabus'))  rec.f_solar_atas  += 1;
     }
 
-    // Pelumas (col 9-14)
-    const uPel = String(row[9]||'').trim();
+    // Pelumas (col 8-12)
+    const uPel = String(row[8]||'').trim();
     if (uPel && uPel !== '-') {
-      const vol = parseFloat(String(row[10]||'1').replace(',','.')) || 1;
-      const sat = String(row[11]||'Liter').trim();
-      const hs  = parseRp(row[12]);
-      const jml = parseRp(row[13]);
-      const tot = parseRp(row[14]);
-      rec.items_pel.push({uraian:uPel, vol, sat, hs, jml});
-      if (tot > 0) rec.pel = tot;
+      const vol = parseFloat(String(row[9]||'1').replace(',','.')) || 1;
+      const sat = String(row[10]||'Liter').trim();
+      const hs  = parseRp(row[11]);
+      const tot = parseRp(row[12]);
+      rec.items_pel.push({uraian:uPel, vol, sat, hs, jml:tot});
       if (uPel.toLowerCase().includes('oli mesin')) rec.oli += vol;
     }
 
-    // Jasa (col 15-17)
-    const uJasa = String(row[15]||'').trim();
+    // Jasa (col 14-15)
+    const uJasa = String(row[14]||'').trim();
     if (uJasa && uJasa !== '-') {
-      const hs  = parseRp(row[16]);
-      const tot = parseRp(row[17]);
+      const hs = parseRp(row[15]);
       rec.items_jasa.push({uraian:uJasa, hs});
-      if (tot > 0) rec.jasa = tot;
     }
-
-    // Total TNKB
-    const totRow = parseRp(row[18]);
-    if (totRow > 0) rec.total = totRow;
   }
 
   return order.map(k => {
     const r = records[k];
-    if (!r.sc)    r.sc   = r.items_sc.reduce((s,i)=>s+i.jml,0);
-    if (!r.pel)   r.pel  = r.items_pel.reduce((s,i)=>s+i.jml,0);
-    if (!r.jasa)  r.jasa = r.items_jasa.reduce((s,i)=>s+i.hs,0);
+    r.sc   = r.items_sc.reduce((s,i)=>s+i.jml,0);
+    r.pel  = r.items_pel.reduce((s,i)=>s+i.jml,0);
+    r.jasa = r.items_jasa.reduce((s,i)=>s+i.hs,0);
     if (!r.total) r.total = r.sc + r.pel + r.jasa;
+    if (!r.bulan) {
+      const found = BULAN_IDX.find(b=>b&&r.tanggal.toLowerCase().includes(b.toLowerCase()));
+      r.bulan = found || 'Januari';
+    }
     return r;
   }).filter(r => r.tnkb && (r.total > 0 || r.items_sc.length > 0));
 }
@@ -3351,14 +3335,10 @@ async function fetchProfileKendaraan() {
     throw new Error('Tidak dapat membaca tab "Profile Kendaraan". Pastikan nama tab persis sama dan spreadsheet dapat diakses publik.');
   }
 }
-async function syncArmadaSopirFromSheets() {
-  if (!isAdmin()) return;
-  toast('Menyinkronkan data Armada & Sopir dari Sheets…');
-  let profile;
-  try { profile = await fetchProfileKendaraan(); }
-  catch (e) { toast(e.message, 'err'); return; }
-  if (!profile.length) { toast('Tidak ada baris kendaraan yang terbaca dari tab Profile Kendaraan.', 'warn'); return; }
-
+/* Terapkan data tab "Profile Kendaraan" ke CONFIG.armada / CONFIG.sopir (upsert per TNKB).
+   Dipakai baik oleh tombol manual admin (syncArmadaSopirFromSheets) maupun oleh
+   sinkronisasi otomatis/real-time setiap loadData() berhasil (autoSyncProfileKendaraan). */
+function applyProfileToArmadaSopir(profile) {
   let armadaAdded = 0, armadaUpdated = 0, sopirAdded = 0, sopirUpdated = 0;
   profile.forEach(p => {
     const key = p.tnkb.trim().toUpperCase();
@@ -3387,7 +3367,30 @@ async function syncArmadaSopirFromSheets() {
   saveConfig();
   safeCall(renderArmadaStats,'renderArmadaStats'); safeCall(renderArmadaTable,'renderArmadaTable');
   safeCall(renderSopirTable,'renderSopirTable');
-  toast(`Sinkron selesai — Armada: +${armadaAdded} baru / ${armadaUpdated} diperbarui. Sopir: +${sopirAdded} baru / ${sopirUpdated} diperbarui.`);
+  return { armadaAdded, armadaUpdated, sopirAdded, sopirUpdated };
+}
+
+async function syncArmadaSopirFromSheets() {
+  if (!isAdmin()) return;
+  toast('Menyinkronkan data Armada & Sopir dari Sheets…');
+  let profile;
+  try { profile = await fetchProfileKendaraan(); }
+  catch (e) { toast(e.message, 'err'); return; }
+  if (!profile.length) { toast('Tidak ada baris kendaraan yang terbaca dari tab Profile Kendaraan.', 'warn'); return; }
+  const r = applyProfileToArmadaSopir(profile);
+  toast(`Sinkron selesai — Armada: +${r.armadaAdded} baru / ${r.armadaUpdated} diperbarui. Sopir: +${r.sopirAdded} baru / ${r.sopirUpdated} diperbarui.`);
+}
+
+/* Sinkronisasi Profile Kendaraan otomatis & senyap (tanpa toast/role admin),
+   dipanggil setiap loadData() berhasil agar tab "Profile Kendaraan" ikut
+   real-time — bukan hanya menunggu admin menekan tombol manual di atas. */
+async function autoSyncProfileKendaraan() {
+  try {
+    const profile = await fetchProfileKendaraan();
+    if (profile.length) applyProfileToArmadaSopir(profile);
+  } catch (e) {
+    console.warn('Auto-sync Profile Kendaraan gagal:', e.message);
+  }
 }
 
 async function fetchSheetData(sheetName) {
@@ -3398,7 +3401,7 @@ async function fetchSheetData(sheetName) {
   } catch(e) {
     console.warn('GViz gagal, coba CSV:', e.message);
   }
-  // Fallback: CSV gid=0 (sheet pertama = REKAP SPJ)
+  // Fallback: CSV gid=0 (sheet pertama = Rekap Pemeliharaan)
   try {
     const csvRows = await fetchCSV(0);
     return { rows: csvRows, source: 'csv' };
@@ -3428,7 +3431,7 @@ async function loadData() {
   G.connection = { status:'connecting', source:null, lastSync:G.connection?.lastSync||null, message:'Menghubungkan ke Google Sheets…' };
 
   try {
-    // ── FETCH SHEET REKAP SPJ ──
+    // ── FETCH SHEET REKAP PEMELIHARAAN ──
     const result = await fetchSheetData(getActiveSheetTab());
 
     {
@@ -3446,6 +3449,9 @@ async function loadData() {
         setStatus(`Live (${src}) · ${parsed.length} nota · ${new Date().toLocaleTimeString('id-ID')}`, true);
         document.getElementById('syncStatus').style.color = 'var(--accent4)';
         G.connection = { status:'connected', source:src, lastSync:new Date(), message:`Terhubung (${src}), ${parsed.length} nota` };
+        // Gabungkan tab "Profile Kendaraan" secara real-time bersamaan dengan
+        // tab "Rekap Pemeliharaan" — tidak menunggu tombol sinkron manual admin.
+        await autoSyncProfileKendaraan();
       } else {
         G.spjData   = EMBEDDED_DATA;
         G.driverMap = DRIVER_MAP;
@@ -4469,27 +4475,7 @@ function renderConnBanner() {
 }
 
 
-// Catatan: interval auto-refresh utama dikendalikan oleh startAutoRefresh()
-// (mengikuti CONFIG.refresh.interval, diatur di Pengaturan → Auto-Refresh).
-// Selain itu, agar terasa "real-time", data juga disegarkan otomatis setiap
-// kali tab ini kembali terlihat/fokus (mis. pengguna berpindah tab lalu kembali).
-let _lastVisRefresh = 0;
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    const now = Date.now();
-    if (now - _lastVisRefresh > 10000) { // throttle: maksimal sekali per 10 detik
-      _lastVisRefresh = now;
-      loadData();
-    }
-  }
-});
-window.addEventListener('focus', () => {
-  const now = Date.now();
-  if (now - _lastVisRefresh > 10000) {
-    _lastVisRefresh = now;
-    loadData();
-  }
-});
+setInterval(loadData, 5 * 60 * 1000);
 
 /* ════════════════════════════════════════════════
    INIT
@@ -4593,15 +4579,7 @@ function applyBrandingToUI() {
   document.getElementById('sbTitle').innerHTML = CONFIG.app.title.replace(/ AND /,' AND<br>');
   document.getElementById('sbSub').textContent = CONFIG.app.instansi + ' · ' + CONFIG.app.year;
   const iv = document.getElementById('refreshIntervalLabel');
-  if (iv) {
-    let label = 'Manual';
-    if (CONFIG.refresh.interval) {
-      label = CONFIG.refresh.interval < 60000
-        ? (CONFIG.refresh.interval/1000) + ' detik'
-        : (CONFIG.refresh.interval/60000) + ' menit';
-    }
-    iv.textContent = 'Auto-refresh: ' + label;
-  }
+  if (iv) iv.textContent = 'Auto-refresh: ' + (CONFIG.refresh.interval ? (CONFIG.refresh.interval/60000)+' menit' : 'Manual');
 }
 function applyMenuVisibility() {
   document.querySelectorAll('.nav-item[data-menu]').forEach(item => {
@@ -4819,19 +4797,20 @@ function extractSpreadsheetId(url) {
 function renderSourceList() {
   const wrap = document.getElementById('sourceList');
   if (!wrap) return;
-  // Terkunci: hanya menampilkan satu-satunya sumber yang diizinkan (DEFAULT_SHEET_ID),
-  // dengan info real-time, tanpa opsi ganti/tambah/hapus sumber.
   wrap.innerHTML = CONFIG.sheets.sources.map(s => {
     const dotClass = s.lastStatus === 'ok' ? 'green' : s.lastStatus === 'error' ? 'red' : 'yellow';
+    const active = s.id === CONFIG.sheets.activeSpreadsheet;
     return `<div class="source-card">
       <div class="source-card-head">
-        <strong><span class="conn-dot ${dotClass}"></span>${escapeHtml(s.name)} <span class="pill" style="margin-left:6px">🔒 Terkunci · Real-time</span></strong>
+        <strong><span class="conn-dot ${dotClass}"></span>${escapeHtml(s.name)} ${active?'<span class="pill" style="margin-left:6px">Aktif</span>':''}</strong>
         <div style="display:flex;gap:6px">
           <button class="btn-sm" onclick="testSourceConnection('${s.id}')">Test Koneksi</button>
+          <button class="btn-sm" onclick="setActiveSource('${s.id}')">${active?'Aktif':'Jadikan Aktif'}</button>
+          <button class="btn-sm" onclick="openSourceModal('${s.id}')">Edit</button>
+          <button class="btn-sm danger" onclick="deleteSource('${s.id}')">Hapus</button>
         </div>
       </div>
-      <div style="font-size:11.5px;color:var(--text3);font-family:var(--mono)">ID: ${escapeHtml(s.spreadsheetId||'—')} · Tab: ${escapeHtml(s.sheetTab||'-')} · Auto-refresh: ${CONFIG.refresh.interval ? (CONFIG.refresh.interval/1000)+' detik' : 'Manual'}</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">URL: <a href="${escapeAttr(s.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${escapeHtml(s.url)}</a></div>
+      <div style="font-size:11.5px;color:var(--text3);font-family:var(--mono)">ID: ${escapeHtml(s.spreadsheetId||'—')} · Tab: ${escapeHtml(s.sheetTab||'-')} · Jenis: ${escapeHtml(s.jenis||'-')} · Status: ${s.status}</div>
     </div>`;
   }).join('') || '<p style="color:var(--text3);font-size:12px">Belum ada sumber data.</p>';
 }
@@ -4847,11 +4826,54 @@ async function testSourceConnection(id) {
   } catch(e) { src.lastStatus = 'error'; toast('Koneksi gagal: ' + e.message, 'err'); }
   saveConfig(); renderSourceList();
 }
-// Sumber data dikunci: ganti/tambah/hapus sumber sengaja dinonaktifkan agar
-// dashboard ini hanya pernah terhubung ke SATU Google Spreadsheet yang ditentukan.
-function setActiveSource() { toast('Sumber data dikunci — hanya satu spreadsheet yang diizinkan.', 'err'); }
-function deleteSource() { toast('Sumber data dikunci — tidak dapat dihapus.', 'err'); }
-function openSourceModal() { toast('Sumber data dikunci — tidak dapat menambah/mengedit sumber lain.', 'err'); }
+function setActiveSource(id) {
+  if (!isAdmin()) return;
+  CONFIG.sheets.activeSpreadsheet = id; saveConfig(); renderSourceList();
+  logAudit('Perubahan Spreadsheet Aktif', id);
+  toast('Sumber data aktif diperbarui.'); loadData();
+}
+function deleteSource(id) {
+  if (!isAdmin()) return;
+  if (!confirm('Hapus sumber data ini?')) return;
+  CONFIG.sheets.sources = CONFIG.sheets.sources.filter(s=>s.id!==id);
+  if (CONFIG.sheets.activeSpreadsheet === id && CONFIG.sheets.sources[0]) CONFIG.sheets.activeSpreadsheet = CONFIG.sheets.sources[0].id;
+  saveConfig(); renderSourceList(); toast('Sumber data dihapus.');
+}
+function openSourceModal(id) {
+  if (!isAdmin()) return;
+  const src = id ? CONFIG.sheets.sources.find(s=>s.id===id) : null;
+  openModal('Sumber Data Google Sheets', `
+    <div class="form-grid">
+      <div class="form-field full"><label>Nama Sumber Data</label><input id="mSrcName" value="${escapeAttr(src?.name||'')}" placeholder="Data Armada"></div>
+      <div class="form-field full"><label>URL Google Spreadsheet (Spreadsheet ID diambil otomatis)</label><input id="mSrcUrl" value="${escapeAttr(src?.url||'')}" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
+      <div class="form-field"><label>Sheet / Tab</label><input id="mSrcTab" value="${escapeAttr(src?.sheetTab||'')}" placeholder="Sheet1"></div>
+      <div class="form-field"><label>Jenis Data</label>
+        <select id="mSrcJenis">
+          ${['Data Pemeliharaan','Data Armada','Data Harga Satuan','Data BBM','Data Operasional','Data SPJ','Lainnya'].map(j=>`<option ${src?.jenis===j?'selected':''}>${j}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field"><label>Status</label>
+        <select id="mSrcStatus"><option value="aktif" ${src?.status==='aktif'?'selected':''}>Aktif</option><option value="nonaktif" ${src?.status==='nonaktif'?'selected':''}>Nonaktif</option></select>
+      </div>
+    </div>`, () => {
+    const url = document.getElementById('mSrcUrl').value.trim();
+    const spreadsheetId = extractSpreadsheetId(url);
+    if (!spreadsheetId) { toast('URL/ID Spreadsheet tidak valid.', 'err'); return false; }
+    const data = {
+      id: src?.id || ('src-'+Date.now()),
+      name: document.getElementById('mSrcName').value.trim() || 'Sumber Data',
+      url, spreadsheetId,
+      sheetTab: document.getElementById('mSrcTab').value.trim() || 'Sheet1',
+      jenis: document.getElementById('mSrcJenis').value,
+      status: document.getElementById('mSrcStatus').value,
+      lastStatus: 'unknown'
+    };
+    if (src) Object.assign(src, data);
+    else CONFIG.sheets.sources.push(data);
+    saveConfig(); renderSourceList(); logAudit('Perubahan Sumber Data', data.name+' ('+data.spreadsheetId+')'); toast('Sumber data disimpan.');
+    return true;
+  });
+}
 
 /* ── Struktur Data / Column Mapping ── */
 function renderMappingList() {
